@@ -1,0 +1,25 @@
+{
+  "name": "landing-multisalon-backend",
+  "version": "1.0.0",
+  "description": "API para gestión de solicitudes de suscripción - Landing MultiSalon",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "keywords": ["multisalon", "landing", "api", "suscripciones"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.0",
+    "firebase-admin": "^12.3.0",
+    "nodemailer": "^6.9.0",
+    "zod": "^3.23.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
