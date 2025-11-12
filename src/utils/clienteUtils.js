@@ -200,11 +200,32 @@ export const generarCredencialesCliente = (datosSolicitud) => {
   }
 }
 
+/**
+ * Genera un token aleatorio para reset de contraseña
+ * Formato: 64 caracteres alfanuméricos
+ *
+ * @returns {string} - Token de reset
+ *
+ * @example
+ * generarTokenReset() // "a1B2c3D4..."
+ */
+export const generarTokenReset = () => {
+  const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  let token = ''
+
+  for (let i = 0; i < 64; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+
+  return token
+}
+
 export default {
   generarUsuarioBase,
   generarPasswordTemporal,
   validarUsuario,
   validarEmail,
   validarPassword,
-  generarCredencialesCliente
+  generarCredencialesCliente,
+  generarTokenReset
 }

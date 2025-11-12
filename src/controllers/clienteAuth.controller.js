@@ -371,9 +371,160 @@ export const changePassword = async (req, res) => {
   }
 }
 
+/**
+ * Solicitar recuperación de contraseña
+ * POST /api/clientes/forgot-password
+ *
+ * Body:
+ * {
+ *   "email": "maria@ejemplo.com"
+ * }
+ */
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body
+
+    // Validar que el email esté presente
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email requerido',
+        mensaje: 'Debes proporcionar tu email.'
+      })
+    }
+
+    console.log(`🔑 Solicitud de recuperación de contraseña para: ${email}`)
+
+    // Importar funciones necesarias
+    const { buscarClientePorEmail, guardarTokenReset } = await import('../config/firebase.js')
+    const { enviarEmailRecuperacionPassword } = await import('../config/email.js')
+    const { generarTokenReset } = await import('../utils/clienteUtils.js')
+
+    // Buscar cliente por email
+    const cliente = await buscarClientePorEmail(email)
+
+    // Por seguridad, siempre responder con éxito aunque el email no exista
+    // Esto previene que atacantes descubran emails válidos
+    if (!cliente) {
+      console.log(`⚠️  Email no encontrado: ${email} (respondiendo con éxito por seguridad)`)
+      return res.status(200).json({
+        success: true,
+        mensaje: 'Si el email existe en nuestro sistema, recibirás un link de recuperación.'
+      })
+    }
+
+    // Verificar que el cliente esté activo
+    if (cliente.estado !== 'activo') {
+      return res.status(403).json({
+        success: false,
+        error: 'Cuenta inactiva',
+        mensaje: 'Tu cuenta está suspendida o cancelada. Contacta a soporte.'
+      })
+    }
+
+    // Generar token de reset
+    const resetToken = generarTokenReset()
+
+    // Guardar token en Firestore
+    await guardarTokenReset(cliente.id, resetToken)
+
+    // Enviar email con link de recuperación
+    await enviarEmailRecuperacionPassword(cliente.email, cliente.nombreCompleto, resetToken)
+
+    console.log(`✅ Email de recuperación enviado a: ${email}`)
+
+    res.status(200).json({
+      success: true,
+      mensaje: 'Si el email existe en nuestro sistema, recibirás un link de recuperación.'
+    })
+  } catch (error) {
+    console.error('❌ Error en forgot-password:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error en el servidor',
+      mensaje: 'Ocurrió un error al procesar tu solicitud.'
+    })
+  }
+}
+
+/**
+ * Resetear contraseña con token
+ * POST /api/clientes/reset-password
+ *
+ * Body:
+ * {
+ *   "token": "abc123...",
+ *   "passwordNueva": "MiNuevaPassword123"
+ * }
+ */
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, passwordNueva } = req.body
+
+    // Validar campos requeridos
+    if (!token || !passwordNueva) {
+      return res.status(400).json({
+        success: false,
+        error: 'Campos requeridos faltantes',
+        mensaje: 'Debes proporcionar el token y la nueva contraseña.'
+      })
+    }
+
+    console.log(`🔐 Intento de reset de contraseña con token`)
+
+    // Importar funciones necesarias
+    const { buscarClientePorTokenReset, resetearPassword } = await import('../config/firebase.js')
+    const { validarPassword } = await import('../utils/clienteUtils.js')
+
+    // Buscar cliente por token
+    const cliente = await buscarClientePorTokenReset(token)
+
+    if (!cliente) {
+      return res.status(400).json({
+        success: false,
+        error: 'Token inválido o expirado',
+        mensaje: 'El enlace de recuperación es inválido o ha expirado. Solicita uno nuevo.'
+      })
+    }
+
+    // Validar que la nueva contraseña cumpla los requisitos
+    const validacion = validarPassword(passwordNueva)
+    if (!validacion.valido) {
+      return res.status(400).json({
+        success: false,
+        error: 'Contraseña inválida',
+        mensaje: validacion.errores[0] || 'La contraseña no cumple los requisitos mínimos.',
+        errores: validacion.errores
+      })
+    }
+
+    // Hashear la nueva contraseña
+    const passwordHash = await bcrypt.hash(passwordNueva, 10)
+
+    // Actualizar contraseña y limpiar token
+    await resetearPassword(cliente.id, passwordHash)
+
+    console.log(`✅ Contraseña reseteada exitosamente para: ${cliente.usuario}`)
+
+    res.status(200).json({
+      success: true,
+      mensaje: '¡Contraseña restablecida exitosamente! Ya puedes iniciar sesión con tu nueva contraseña.'
+    })
+  } catch (error) {
+    console.error('❌ Error en reset-password:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error en el servidor',
+      mensaje: 'Ocurrió un error al restablecer tu contraseña.'
+    })
+  }
+}
+
 export default {
   login,
   verifyToken,
   getProfile,
-  changePassword
+  changePassword,
+  forgotPassword,
+  resetPassword
 }

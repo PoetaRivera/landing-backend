@@ -323,8 +323,104 @@ export const enviarEmailCredencialesCliente = async (datosCliente, credenciales)
   }
 }
 
+/**
+ * Envía un email con el link de recuperación de contraseña
+ */
+export const enviarEmailRecuperacionPassword = async (email, nombreCompleto, resetToken) => {
+  try {
+    const transporter = crearTransporter()
+
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://misalons.com'}/cliente/reset-password?token=${resetToken}`
+
+    const mailOptions = {
+      from: `"MultiSalon" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: '🔒 Recuperación de Contraseña - MultiSalon',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
+            .button { display: inline-block; background: #f59e0b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .button:hover { background: #d97706; }
+            .warning-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 14px; border-radius: 0 0 8px 8px; }
+            .code-box { background: #f3f4f6; padding: 15px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px; word-break: break-all; margin: 15px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0; font-size: 28px;">🔒 Recuperación de Contraseña</h1>
+              <p style="margin: 10px 0 0 0; font-size: 16px;">Restablecer tu contraseña</p>
+            </div>
+
+            <div class="content">
+              <p>Hola <strong>${nombreCompleto}</strong>,</p>
+
+              <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en MultiSalon.</p>
+
+              <p>Si fuiste tú quien solicitó esto, haz clic en el siguiente botón para crear una nueva contraseña:</p>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetUrl}" class="button">
+                  Restablecer Contraseña
+                </a>
+              </div>
+
+              <p style="font-size: 14px; color: #6b7280;">
+                O copia y pega este enlace en tu navegador:
+              </p>
+              <div class="code-box">
+                ${resetUrl}
+              </div>
+
+              <div class="warning-box">
+                <p style="margin: 0;"><strong>⏰ Este enlace expirará en 1 hora</strong></p>
+                <p style="margin: 10px 0 0 0; font-size: 14px;">Por razones de seguridad, el enlace solo será válido durante 1 hora.</p>
+              </div>
+
+              <div class="warning-box">
+                <p style="margin: 0;"><strong>⚠️ ¿No solicitaste esto?</strong></p>
+                <p style="margin: 10px 0 0 0; font-size: 14px;">Si no solicitaste restablecer tu contraseña, puedes ignorar este email de forma segura. Tu contraseña actual seguirá siendo válida.</p>
+              </div>
+
+              <p style="margin-top: 30px;">Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.</p>
+
+              <p>Saludos cordiales,<br>
+              <strong>El equipo de MultiSalon</strong></p>
+            </div>
+
+            <div class="footer">
+              <p><strong>MultiSalon</strong> - Sistema de Gestión para Salones de Belleza</p>
+              <p>Email: info@multisalon.com</p>
+              <p style="font-size: 12px; color: #9ca3af; margin-top: 15px;">
+                Este es un email automático, por favor no respondas a este mensaje.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    }
+
+    const info = await transporter.sendMail(mailOptions)
+    console.log('✅ Email de recuperación enviado:', info.messageId)
+
+    return { success: true, messageId: info.messageId }
+  } catch (error) {
+    console.error('❌ Error al enviar email de recuperación:', error)
+    throw error
+  }
+}
+
 export default {
   enviarEmailNuevaSolicitud,
   enviarEmailConfirmacionCliente,
-  enviarEmailCredencialesCliente
+  enviarEmailCredencialesCliente,
+  enviarEmailRecuperacionPassword
 }

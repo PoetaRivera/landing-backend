@@ -4,7 +4,7 @@
  */
 
 import express from 'express'
-import { login, verifyToken, getProfile, changePassword } from '../controllers/clienteAuth.controller.js'
+import { login, verifyToken, getProfile, changePassword, forgotPassword, resetPassword } from '../controllers/clienteAuth.controller.js'
 import { authenticateCliente } from '../middlewares/clienteAuth.middleware.js'
 
 const router = express.Router()
@@ -86,5 +86,40 @@ router.get('/me', authenticateCliente, getProfile)
  * }
  */
 router.post('/change-password', authenticateCliente, changePassword)
+
+/**
+ * POST /api/clientes/forgot-password
+ * Solicitar recuperación de contraseña
+ *
+ * Body:
+ * {
+ *   "email": "maria@ejemplo.com"
+ * }
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "mensaje": "Si el email existe en nuestro sistema, recibirás un link de recuperación."
+ * }
+ */
+router.post('/forgot-password', forgotPassword)
+
+/**
+ * POST /api/clientes/reset-password
+ * Resetear contraseña con token
+ *
+ * Body:
+ * {
+ *   "token": "abc123...",
+ *   "passwordNueva": "MiNuevaPassword123"
+ * }
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "mensaje": "¡Contraseña restablecida exitosamente! Ya puedes iniciar sesión con tu nueva contraseña."
+ * }
+ */
+router.post('/reset-password', resetPassword)
 
 export default router

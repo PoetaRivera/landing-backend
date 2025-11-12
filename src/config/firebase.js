@@ -380,6 +380,126 @@ export const crearCliente = async (datosCliente) => {
   }
 }
 
+/**
+ * ========================================
+ * FUNCIONES DE PASSWORD RESET
+ * ========================================
+ */
+
+/**
+ * Guardar token de reset de contraseña para un cliente
+ * @param {string} clienteId - ID del cliente
+ * @param {string} token - Token de reset
+ * @returns {Promise<Object>} - Resultado
+ */
+export const guardarTokenReset = async (clienteId, token) => {
+  try {
+    const db = getFirestore()
+
+    // El token expira en 1 hora
+    const fechaExpiracion = new Date()
+    fechaExpiracion.setHours(fechaExpiracion.getHours() + 1)
+
+    await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('clientes')
+      .doc(clienteId)
+      .update({
+        tokenResetPassword: token,
+        fechaTokenResetPassword: admin.firestore.Timestamp.fromDate(fechaExpiracion),
+        fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
+      })
+
+    console.log(`✅ Token de reset guardado para cliente: ${clienteId}`)
+
+    return {
+      success: true,
+      mensaje: 'Token de reset guardado correctamente'
+    }
+  } catch (error) {
+    console.error('❌ Error al guardar token de reset:', error)
+    throw error
+  }
+}
+
+/**
+ * Buscar cliente por token de reset
+ * @param {string} token - Token de reset
+ * @returns {Promise<Object|null>} - Cliente encontrado o null
+ */
+export const buscarClientePorTokenReset = async (token) => {
+  try {
+    const db = getFirestore()
+
+    const snapshot = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('clientes')
+      .where('tokenResetPassword', '==', token)
+      .limit(1)
+      .get()
+
+    if (snapshot.empty) {
+      return null
+    }
+
+    const doc = snapshot.docs[0]
+    const cliente = {
+      id: doc.id,
+      ...doc.data()
+    }
+
+    // Verificar que el token no haya expirado
+    const ahora = new Date()
+    const fechaExpiracion = cliente.fechaTokenResetPassword?.toDate()
+
+    if (!fechaExpiracion || ahora > fechaExpiracion) {
+      console.log('⚠️  Token de reset expirado')
+      return null
+    }
+
+    return cliente
+  } catch (error) {
+    console.error('❌ Error al buscar cliente por token:', error)
+    throw error
+  }
+}
+
+/**
+ * Actualizar contraseña y limpiar token de reset
+ * @param {string} clienteId - ID del cliente
+ * @param {string} passwordHash - Nueva contraseña hasheada
+ * @returns {Promise<Object>} - Resultado
+ */
+export const resetearPassword = async (clienteId, passwordHash) => {
+  try {
+    const db = getFirestore()
+
+    await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('clientes')
+      .doc(clienteId)
+      .update({
+        passwordHash: passwordHash,
+        tokenResetPassword: null,
+        fechaTokenResetPassword: null,
+        fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
+      })
+
+    console.log(`✅ Contraseña reseteada para cliente: ${clienteId}`)
+
+    return {
+      success: true,
+      mensaje: 'Contraseña reseteada correctamente'
+    }
+  } catch (error) {
+    console.error('❌ Error al resetear contraseña:', error)
+    throw error
+  }
+}
+
 export default {
   initializeFirebase,
   getFirestore,
@@ -390,5 +510,8 @@ export default {
   buscarClientePorEmail,
   buscarClientePorUsuario,
   generarUsuarioUnico,
-  crearCliente
+  crearCliente,
+  guardarTokenReset,
+  buscarClientePorTokenReset,
+  resetearPassword
 }
