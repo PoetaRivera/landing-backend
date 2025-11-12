@@ -6,6 +6,7 @@ import suscripcionesRoutes from './routes/suscripciones.routes.js'
 import authRoutes from './routes/auth.routes.js'
 import clienteAuthRoutes from './routes/clienteAuth.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
+import adminRoutes from './routes/admin.routes.js'
 
 // Cargar variables de entorno
 dotenv.config()
@@ -51,6 +52,7 @@ app.get('/api/health', (req, res) => {
 
 // Rutas de la API
 app.use('/api/auth', authRoutes) // Autenticación de admins
+app.use('/api/admin', adminRoutes) // Panel de administración
 app.use('/api/clientes', clienteAuthRoutes) // Autenticación de clientes
 app.use('/api/suscripciones', suscripcionesRoutes)
 app.use('/api/payment', paymentRoutes) // Pagos con Stripe
