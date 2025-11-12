@@ -14,18 +14,26 @@ import {
 } from '../config/email.js'
 
 import { generarCredencialesCliente } from '../utils/clienteUtils.js'
+import { createCheckoutSession, getPriceIdForPlan } from '../config/stripe.js'
 import bcrypt from 'bcryptjs'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 /**
- * Crear una nueva solicitud de suscripción + Auto-registro de cliente
+ * Crear una nueva solicitud de suscripción + Redirigir a Stripe Checkout
  * POST /api/suscripciones
  *
- * Flujo:
+ * Nuevo Flujo con Stripe:
  * 1. Guardar solicitud en Firestore
- * 2. Generar credenciales únicas para el cliente
- * 3. Crear cliente en Firestore con credenciales hasheadas
- * 4. Vincular solicitud con cliente
- * 5. Enviar 3 emails: admin, confirmación, credenciales
+ * 2. Enviar email de notificación al admin
+ * 3. Crear sesión de Checkout de Stripe
+ * 4. Devolver URL de checkout para que el frontend redirija
+ *
+ * Después del pago exitoso (via webhook):
+ * - Generar credenciales
+ * - Crear cliente en Firestore
+ * - Enviar emails de confirmación y credenciales
  */
 export const crearSolicitud = async (req, res) => {
   try {
@@ -43,80 +51,49 @@ export const crearSolicitud = async (req, res) => {
 
     console.log(`✅ Solicitud guardada con ID: ${solicitudId}`)
 
-    // PASO 2: Generar credenciales únicas para el cliente
-    const credenciales = generarCredencialesCliente(datosSolicitud)
-    const usuarioBase = credenciales.usuario
-    const usuarioUnico = await generarUsuarioUnico(usuarioBase)
+    // PASO 2: Enviar email de notificación al admin (no esperar)
+    enviarEmailNuevaSolicitud(datosSolicitud)
+      .then(() => console.log('✅ Email admin enviado'))
+      .catch(error => console.error('⚠️  Error al enviar email admin:', error.message))
 
-    console.log(`🔑 Usuario generado: ${usuarioUnico}`)
+    // PASO 3: Obtener Price ID de Stripe para el plan
+    const priceId = getPriceIdForPlan(datosSolicitud.plan)
 
-    // PASO 3: Hashear la contraseña temporal
-    const passwordHash = await bcrypt.hash(credenciales.passwordTemporal, 10)
+    // PASO 4: URLs de success y cancel
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174'
+    const successUrl = `${frontendUrl}/suscripcion/success?session_id={CHECKOUT_SESSION_ID}&solicitud_id=${solicitudId}`
+    const cancelUrl = `${frontendUrl}/suscripcion/cancel?solicitud_id=${solicitudId}`
 
-    // PASO 4: Crear cliente en Firestore
-    const datosCliente = {
-      nombreCompleto: datosSolicitud.nombrePropietario,
-      email: datosSolicitud.email,
-      telefono: datosSolicitud.telefono,
-      nombreSalon: datosSolicitud.nombreSalon,
-      usuario: usuarioUnico,
-      passwordHash: passwordHash,
-      solicitudId: solicitudId,
-      planSeleccionado: datosSolicitud.plan
-    }
+    // PASO 5: Crear sesión de Checkout de Stripe
+    const session = await createCheckoutSession({
+      priceId,
+      clienteEmail: datosSolicitud.email,
+      solicitudId,
+      successUrl,
+      cancelUrl
+    })
 
-    const resultadoCliente = await crearCliente(datosCliente)
-    const clienteId = resultadoCliente.id
+    console.log(`💳 Checkout session creada: ${session.id}`)
 
-    console.log(`✅ Cliente creado con ID: ${clienteId}`)
-
-    // PASO 5: Vincular solicitud con cliente
-    await vincularClienteSolicitud(solicitudId, clienteId)
-
-    console.log(`✅ Solicitud ${solicitudId} vinculada con cliente ${clienteId}`)
-
-    // PASO 6: Enviar emails en paralelo (no bloquean la respuesta)
-    Promise.all([
-      enviarEmailNuevaSolicitud(datosSolicitud),
-      enviarEmailConfirmacionCliente(datosSolicitud),
-      enviarEmailCredencialesCliente(
-        {
-          nombreCompleto: datosSolicitud.nombrePropietario,
-          email: datosSolicitud.email,
-          nombreSalon: datosSolicitud.nombreSalon
-        },
-        {
-          usuario: usuarioUnico,
-          passwordTemporal: credenciales.passwordTemporal
-        }
-      )
-    ])
-      .then(() => {
-        console.log('✅ Todos los emails enviados correctamente')
-      })
-      .catch(error => {
-        console.error('⚠️  Error al enviar algunos emails (solicitud y cliente creados exitosamente):', error.message)
-      })
-
-    // PASO 7: Responder al cliente inmediatamente
+    // PASO 6: Responder con URL de checkout
     res.status(201).json({
       success: true,
-      mensaje: '¡Solicitud recibida correctamente! Revisa tu email para acceder con tus credenciales.',
+      mensaje: '¡Solicitud recibida! Serás redirigido al checkout para completar el pago.',
       data: {
         solicitudId: solicitudId,
-        clienteId: clienteId,
-        usuario: usuarioUnico
+        checkoutUrl: session.url,
+        sessionId: session.id
       }
     })
 
   } catch (error) {
-    console.error('❌ Error al crear solicitud y cliente:', error)
+    console.error('❌ Error al crear solicitud:', error)
 
     // Manejo de errores específicos
     let mensajeError = 'Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente.'
 
-    if (error.message === 'Ya existe un cliente con ese email') {
-      mensajeError = 'Ya existe una cuenta con ese email. Por favor, contacta a soporte si necesitas ayuda.'
+    if (error.message.includes('Price ID')) {
+      mensajeError = 'Plan de suscripción no válido. Por favor, selecciona un plan válido.'
     }
 
     res.status(500).json({

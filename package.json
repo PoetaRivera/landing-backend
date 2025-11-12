@@ -25,6 +25,7 @@
     "firebase-admin": "^12.3.0",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.9.0",
+    "stripe": "^19.3.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {

@@ -5,6 +5,7 @@ import { initializeFirebase } from './config/firebase.js'
 import suscripcionesRoutes from './routes/suscripciones.routes.js'
 import authRoutes from './routes/auth.routes.js'
 import clienteAuthRoutes from './routes/clienteAuth.routes.js'
+import paymentRoutes from './routes/payment.routes.js'
 
 // Cargar variables de entorno
 dotenv.config()
@@ -20,6 +21,13 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5174',
   credentials: true
 }))
+
+// IMPORTANTE: El webhook de Stripe debe recibir el raw body ANTES del parsing JSON
+// Por eso usamos express.raw() solo para esta ruta
+app.use(
+  '/api/payment/webhook',
+  express.raw({ type: 'application/json' })
+)
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
@@ -45,6 +53,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes) // Autenticación de admins
 app.use('/api/clientes', clienteAuthRoutes) // Autenticación de clientes
 app.use('/api/suscripciones', suscripcionesRoutes)
+app.use('/api/payment', paymentRoutes) // Pagos con Stripe
 
 // Manejo de errores 404
 app.use((req, res) => {
