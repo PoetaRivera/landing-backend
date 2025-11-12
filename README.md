@@ -42,6 +42,8 @@ backend/
 - **Zod** - Validación de datos
 - **CORS** - Habilitar peticiones del frontend
 - **dotenv** - Variables de entorno
+- **JWT** - Autenticación con tokens
+- **bcryptjs** - Hash de contraseñas
 
 ---
 
@@ -78,9 +80,25 @@ EMAIL_ADMIN=admin@multisalon.com  # Email que recibirá las notificaciones
 # Frontend URL (para CORS)
 FRONTEND_URL=http://localhost:5174
 
+# JWT Autenticación
+JWT_SECRET=tu-secret-key-muy-seguro-y-aleatorio-minimo-32-caracteres
+JWT_EXPIRES_IN=24h
+
 # Entorno
 NODE_ENV=development
 ```
+
+### Crear Usuario Administrador
+
+Para acceder a los endpoints protegidos, primero debes crear un usuario administrador:
+
+```bash
+npm run create-admin
+```
+
+Sigue las instrucciones en pantalla para crear tu usuario admin.
+
+**⚠️ IMPORTANTE**: Lee [AUTHENTICATION.md](./AUTHENTICATION.md) para más detalles sobre el sistema de autenticación.
 
 ### Desarrollo
 
@@ -93,6 +111,14 @@ npm run dev
 
 ```bash
 npm start
+```
+
+### Scripts Disponibles
+
+```bash
+npm run dev          # Desarrollo con nodemon (auto-reload)
+npm start            # Producción
+npm run create-admin # Crear usuario administrador
 ```
 
 ---

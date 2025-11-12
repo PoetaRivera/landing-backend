@@ -12,6 +12,8 @@ import {
   actualizarEstadoSchema
 } from '../utils/validation.js'
 
+import { authenticateToken } from '../middlewares/auth.middleware.js'
+
 const router = Router()
 
 /**
@@ -28,31 +30,34 @@ router.post(
 /**
  * @route   GET /api/suscripciones
  * @desc    Obtener todas las solicitudes (con filtros opcionales)
- * @access  Privado (en producción, agregar autenticación)
+ * @access  Privado (requiere autenticación)
  * @query   estado, plan, limite
  */
 router.get(
   '/',
+  authenticateToken,
   getSolicitudes
 )
 
 /**
  * @route   GET /api/suscripciones/stats
  * @desc    Obtener estadísticas de solicitudes
- * @access  Privado (en producción, agregar autenticación)
+ * @access  Privado (requiere autenticación)
  */
 router.get(
   '/stats',
+  authenticateToken,
   getEstadisticas
 )
 
 /**
  * @route   PATCH /api/suscripciones/:id
  * @desc    Actualizar el estado de una solicitud
- * @access  Privado (en producción, agregar autenticación)
+ * @access  Privado (requiere autenticación)
  */
 router.patch(
   '/:id',
+  authenticateToken,
   validarDatos(actualizarEstadoSchema),
   actualizarEstado
 )
