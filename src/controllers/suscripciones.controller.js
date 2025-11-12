@@ -1,17 +1,31 @@
 import {
   guardarSolicitudSuscripcion,
   obtenerSolicitudes,
-  actualizarEstadoSolicitud
+  actualizarEstadoSolicitud,
+  vincularClienteSolicitud,
+  generarUsuarioUnico,
+  crearCliente
 } from '../config/firebase.js'
 
 import {
   enviarEmailNuevaSolicitud,
-  enviarEmailConfirmacionCliente
+  enviarEmailConfirmacionCliente,
+  enviarEmailCredencialesCliente
 } from '../config/email.js'
 
+import { generarCredencialesCliente } from '../utils/clienteUtils.js'
+import bcrypt from 'bcryptjs'
+
 /**
- * Crear una nueva solicitud de suscripción
+ * Crear una nueva solicitud de suscripción + Auto-registro de cliente
  * POST /api/suscripciones
+ *
+ * Flujo:
+ * 1. Guardar solicitud en Firestore
+ * 2. Generar credenciales únicas para el cliente
+ * 3. Crear cliente en Firestore con credenciales hasheadas
+ * 4. Vincular solicitud con cliente
+ * 5. Enviar 3 emails: admin, confirmación, credenciales
  */
 export const crearSolicitud = async (req, res) => {
   try {
@@ -23,35 +37,92 @@ export const crearSolicitud = async (req, res) => {
       plan: datosSolicitud.plan
     })
 
-    // 1. Guardar en Firestore
-    const resultado = await guardarSolicitudSuscripcion(datosSolicitud)
+    // PASO 1: Guardar solicitud en Firestore
+    const resultadoSolicitud = await guardarSolicitudSuscripcion(datosSolicitud)
+    const solicitudId = resultadoSolicitud.id
 
-    // 2. Enviar emails (en paralelo, no bloquean la respuesta)
+    console.log(`✅ Solicitud guardada con ID: ${solicitudId}`)
+
+    // PASO 2: Generar credenciales únicas para el cliente
+    const credenciales = generarCredencialesCliente(datosSolicitud)
+    const usuarioBase = credenciales.usuario
+    const usuarioUnico = await generarUsuarioUnico(usuarioBase)
+
+    console.log(`🔑 Usuario generado: ${usuarioUnico}`)
+
+    // PASO 3: Hashear la contraseña temporal
+    const passwordHash = await bcrypt.hash(credenciales.passwordTemporal, 10)
+
+    // PASO 4: Crear cliente en Firestore
+    const datosCliente = {
+      nombreCompleto: datosSolicitud.nombrePropietario,
+      email: datosSolicitud.email,
+      telefono: datosSolicitud.telefono,
+      nombreSalon: datosSolicitud.nombreSalon,
+      usuario: usuarioUnico,
+      passwordHash: passwordHash,
+      solicitudId: solicitudId,
+      planSeleccionado: datosSolicitud.plan
+    }
+
+    const resultadoCliente = await crearCliente(datosCliente)
+    const clienteId = resultadoCliente.id
+
+    console.log(`✅ Cliente creado con ID: ${clienteId}`)
+
+    // PASO 5: Vincular solicitud con cliente
+    await vincularClienteSolicitud(solicitudId, clienteId)
+
+    console.log(`✅ Solicitud ${solicitudId} vinculada con cliente ${clienteId}`)
+
+    // PASO 6: Enviar emails en paralelo (no bloquean la respuesta)
     Promise.all([
       enviarEmailNuevaSolicitud(datosSolicitud),
-      enviarEmailConfirmacionCliente(datosSolicitud)
+      enviarEmailConfirmacionCliente(datosSolicitud),
+      enviarEmailCredencialesCliente(
+        {
+          nombreCompleto: datosSolicitud.nombrePropietario,
+          email: datosSolicitud.email,
+          nombreSalon: datosSolicitud.nombreSalon
+        },
+        {
+          usuario: usuarioUnico,
+          passwordTemporal: credenciales.passwordTemporal
+        }
+      )
     ])
       .then(() => {
-        console.log('✅ Emails enviados correctamente')
+        console.log('✅ Todos los emails enviados correctamente')
       })
       .catch(error => {
-        console.error('⚠️  Error al enviar emails (solicitud guardada exitosamente):', error.message)
+        console.error('⚠️  Error al enviar algunos emails (solicitud y cliente creados exitosamente):', error.message)
       })
 
-    // 3. Responder al cliente inmediatamente
+    // PASO 7: Responder al cliente inmediatamente
     res.status(201).json({
       success: true,
-      mensaje: '¡Solicitud recibida correctamente! Te contactaremos pronto.',
-      id: resultado.id
+      mensaje: '¡Solicitud recibida correctamente! Revisa tu email para acceder con tus credenciales.',
+      data: {
+        solicitudId: solicitudId,
+        clienteId: clienteId,
+        usuario: usuarioUnico
+      }
     })
 
   } catch (error) {
-    console.error('❌ Error al crear solicitud:', error)
+    console.error('❌ Error al crear solicitud y cliente:', error)
+
+    // Manejo de errores específicos
+    let mensajeError = 'Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente.'
+
+    if (error.message === 'Ya existe un cliente con ese email') {
+      mensajeError = 'Ya existe una cuenta con ese email. Por favor, contacta a soporte si necesitas ayuda.'
+    }
 
     res.status(500).json({
       success: false,
-      error: 'Error al procesar la solicitud',
-      mensaje: 'Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente.'
+      error: error.message || 'Error al procesar la solicitud',
+      mensaje: mensajeError
     })
   }
 }

@@ -200,7 +200,131 @@ export const enviarEmailConfirmacionCliente = async (datosSolicitud) => {
   }
 }
 
+/**
+ * Envía un email con las credenciales de acceso al cliente recién registrado
+ */
+export const enviarEmailCredencialesCliente = async (datosCliente, credenciales) => {
+  try {
+    const transporter = crearTransporter()
+
+    const mailOptions = {
+      from: `"MultiSalon" <${process.env.EMAIL_USER}>`,
+      to: datosCliente.email,
+      subject: '🔑 Tus Credenciales de Acceso - MultiSalon',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
+            .credentials-box { background: #f0fdf4; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .credential-item { margin: 15px 0; }
+            .credential-label { font-weight: bold; color: #059669; display: block; margin-bottom: 5px; }
+            .credential-value { background: #ffffff; padding: 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; color: #1f2937; border: 1px solid #d1d5db; }
+            .warning-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 14px; border-radius: 0 0 8px 8px; }
+            .button { display: inline-block; background: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .steps { background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            ul { padding-left: 20px; }
+            li { margin: 8px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0; font-size: 28px;">🎉 ¡Bienvenido a MultiSalon!</h1>
+              <p style="margin: 10px 0 0 0; font-size: 16px;">Tu cuenta ha sido creada exitosamente</p>
+            </div>
+
+            <div class="content">
+              <p>Hola <strong>${datosCliente.nombreCompleto}</strong>,</p>
+
+              <p>¡Estamos emocionados de tenerte a bordo! Tu solicitud para <strong>${datosCliente.nombreSalon}</strong> ha sido recibida y hemos creado tu cuenta de acceso automáticamente.</p>
+
+              <div class="credentials-box">
+                <h3 style="margin-top: 0; color: #059669; text-align: center;">🔑 Tus Credenciales de Acceso</h3>
+
+                <div class="credential-item">
+                  <span class="credential-label">Usuario:</span>
+                  <div class="credential-value">${credenciales.usuario}</div>
+                </div>
+
+                <div class="credential-item">
+                  <span class="credential-label">Contraseña Temporal:</span>
+                  <div class="credential-value">${credenciales.passwordTemporal}</div>
+                </div>
+              </div>
+
+              <div class="warning-box">
+                <strong>⚠️ Importante:</strong> Por seguridad, te recomendamos cambiar tu contraseña temporal en tu primer inicio de sesión. Puedes hacerlo desde tu perfil.
+              </div>
+
+              <div class="steps">
+                <h3 style="margin-top: 0; color: #2563eb;">📋 Próximos Pasos:</h3>
+                <ol>
+                  <li><strong>Guarda estas credenciales en un lugar seguro</strong></li>
+                  <li>Accede al portal del cliente con tus credenciales</li>
+                  <li>Cambia tu contraseña temporal por una segura</li>
+                  <li>Completa la información de tu perfil</li>
+                  <li>Nuestro equipo te contactará para coordinar los detalles del montaje</li>
+                </ol>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.FRONTEND_URL || 'https://misalons.com'}/cliente/login" class="button">
+                  Acceder al Portal
+                </a>
+              </div>
+
+              <h3>✨ ¿Qué puedes hacer en el portal?</h3>
+              <ul>
+                <li>Ver el estado de tu solicitud</li>
+                <li>Consultar información de tu salón (una vez configurado)</li>
+                <li>Ver el estado de tu suscripción</li>
+                <li>Gestionar tus datos de pago</li>
+                <li>Ver historial de pagos</li>
+                <li>Cancelar tu suscripción si lo necesitas</li>
+                <li>Actualizar tu información de contacto</li>
+              </ul>
+
+              <p style="margin-top: 30px;">Si tienes alguna pregunta o necesitas ayuda, no dudes en responder a este correo o contactarnos.</p>
+
+              <p>¡Gracias por confiar en MultiSalon!</p>
+
+              <p style="margin-top: 30px;">
+                Saludos cordiales,<br>
+                <strong>El equipo de MultiSalon</strong>
+              </p>
+            </div>
+
+            <div class="footer">
+              <p><strong>MultiSalon</strong> - Sistema de Gestión para Salones de Belleza</p>
+              <p>Email: info@multisalon.com</p>
+              <p style="font-size: 12px; color: #9ca3af; margin-top: 15px;">
+                Por favor, no compartas tus credenciales con nadie. Este es un email automático, pero puedes responder si necesitas ayuda.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    }
+
+    const info = await transporter.sendMail(mailOptions)
+    console.log('✅ Email de credenciales enviado al cliente:', info.messageId)
+
+    return { success: true, messageId: info.messageId }
+  } catch (error) {
+    console.error('❌ Error al enviar email de credenciales:', error)
+    throw error
+  }
+}
+
 export default {
   enviarEmailNuevaSolicitud,
-  enviarEmailConfirmacionCliente
+  enviarEmailConfirmacionCliente,
+  enviarEmailCredencialesCliente
 }

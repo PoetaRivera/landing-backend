@@ -64,7 +64,7 @@ export const getFirestore = () => {
 
 /**
  * Guarda una solicitud de suscripción en Firestore
- * Colección: solicitudes_landing
+ * Nueva estructura: landing-page/data/solicitudes/{id}
  */
 export const guardarSolicitudSuscripcion = async (datos) => {
   try {
@@ -74,10 +74,15 @@ export const guardarSolicitudSuscripcion = async (datos) => {
       ...datos,
       fechaCreacion: admin.firestore.FieldValue.serverTimestamp(),
       estado: 'pendiente', // pendiente, contactado, procesado, rechazado
-      origen: 'landing_page'
+      origen: 'landing_page',
+      clienteId: null // Se actualizará después de crear el cliente
     }
 
-    const docRef = await db.collection('solicitudes_landing').add(solicitud)
+    const docRef = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes')
+      .add(solicitud)
 
     console.log(`✅ Solicitud guardada con ID: ${docRef.id}`)
 
@@ -94,11 +99,15 @@ export const guardarSolicitudSuscripcion = async (datos) => {
 
 /**
  * Obtiene todas las solicitudes de suscripción
+ * Nueva estructura: landing-page/data/solicitudes
  */
 export const obtenerSolicitudes = async (filtros = {}) => {
   try {
     const db = getFirestore()
-    let query = db.collection('solicitudes_landing')
+    let query = db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes')
 
     // Aplicar filtros
     if (filtros.estado) {
@@ -136,16 +145,22 @@ export const obtenerSolicitudes = async (filtros = {}) => {
 
 /**
  * Actualiza el estado de una solicitud
+ * Nueva estructura: landing-page/data/solicitudes
  */
 export const actualizarEstadoSolicitud = async (id, nuevoEstado, notas = '') => {
   try {
     const db = getFirestore()
 
-    await db.collection('solicitudes_landing').doc(id).update({
-      estado: nuevoEstado,
-      notas: notas,
-      fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
-    })
+    await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes')
+      .doc(id)
+      .update({
+        estado: nuevoEstado,
+        notas: notas,
+        fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
+      })
 
     console.log(`✅ Solicitud ${id} actualizada a estado: ${nuevoEstado}`)
 
@@ -159,10 +174,221 @@ export const actualizarEstadoSolicitud = async (id, nuevoEstado, notas = '') => 
   }
 }
 
+/**
+ * Actualiza el clienteId de una solicitud
+ * Se usa después de crear el cliente para vincular ambos registros
+ */
+export const vincularClienteSolicitud = async (solicitudId, clienteId) => {
+  try {
+    const db = getFirestore()
+
+    await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes')
+      .doc(solicitudId)
+      .update({
+        clienteId: clienteId,
+        fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
+      })
+
+    console.log(`✅ Solicitud ${solicitudId} vinculada con cliente ${clienteId}`)
+
+    return {
+      success: true,
+      mensaje: 'Solicitud vinculada con cliente correctamente'
+    }
+  } catch (error) {
+    console.error('❌ Error al vincular solicitud con cliente:', error)
+    throw error
+  }
+}
+
+/**
+ * ========================================
+ * FUNCIONES DE CLIENTES
+ * ========================================
+ */
+
+/**
+ * Busca un cliente por email
+ * @param {string} email - Email del cliente
+ * @returns {object|null} - Cliente encontrado o null
+ */
+export const buscarClientePorEmail = async (email) => {
+  try {
+    const db = getFirestore()
+
+    const snapshot = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('clientes')
+      .where('email', '==', email.toLowerCase().trim())
+      .limit(1)
+      .get()
+
+    if (snapshot.empty) {
+      return null
+    }
+
+    const doc = snapshot.docs[0]
+    return {
+      id: doc.id,
+      ...doc.data()
+    }
+  } catch (error) {
+    console.error('❌ Error al buscar cliente por email:', error)
+    throw error
+  }
+}
+
+/**
+ * Busca un cliente por usuario
+ * @param {string} usuario - Usuario del cliente
+ * @returns {object|null} - Cliente encontrado o null
+ */
+export const buscarClientePorUsuario = async (usuario) => {
+  try {
+    const db = getFirestore()
+
+    const snapshot = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('clientes')
+      .where('usuario', '==', usuario.toLowerCase().trim())
+      .limit(1)
+      .get()
+
+    if (snapshot.empty) {
+      return null
+    }
+
+    const doc = snapshot.docs[0]
+    return {
+      id: doc.id,
+      ...doc.data()
+    }
+  } catch (error) {
+    console.error('❌ Error al buscar cliente por usuario:', error)
+    throw error
+  }
+}
+
+/**
+ * Genera un usuario único verificando que no exista en la base de datos
+ * Si el usuario base existe, agrega un número incremental
+ *
+ * @param {string} usuarioBase - Usuario base generado
+ * @returns {string} - Usuario único
+ */
+export const generarUsuarioUnico = async (usuarioBase) => {
+  try {
+    let usuarioFinal = usuarioBase
+    let contador = 2
+
+    // Verificar si el usuario existe
+    let existe = await buscarClientePorUsuario(usuarioFinal)
+
+    // Si existe, agregar número hasta encontrar uno disponible
+    while (existe) {
+      usuarioFinal = `${usuarioBase}${contador}`
+      existe = await buscarClientePorUsuario(usuarioFinal)
+      contador++
+
+      // Prevenir loop infinito
+      if (contador > 100) {
+        throw new Error('No se pudo generar un usuario único')
+      }
+    }
+
+    return usuarioFinal
+  } catch (error) {
+    console.error('❌ Error al generar usuario único:', error)
+    throw error
+  }
+}
+
+/**
+ * Crea un nuevo cliente en Firestore
+ *
+ * @param {object} datosCliente - Datos del cliente
+ * @returns {object} - { id, usuario, passwordTemporal }
+ */
+export const crearCliente = async (datosCliente) => {
+  try {
+    const db = getFirestore()
+
+    // Verificar que el email no exista
+    const clienteExistente = await buscarClientePorEmail(datosCliente.email)
+    if (clienteExistente) {
+      throw new Error('Ya existe un cliente con ese email')
+    }
+
+    // Preparar datos del cliente
+    const cliente = {
+      // Información básica
+      nombreCompleto: datosCliente.nombreCompleto,
+      email: datosCliente.email.toLowerCase().trim(),
+      telefono: datosCliente.telefono,
+
+      // Credenciales (passwordHash ya debe venir hasheado)
+      usuario: datosCliente.usuario,
+      passwordHash: datosCliente.passwordHash,
+
+      // Información del salón
+      nombreSalon: datosCliente.nombreSalon,
+      salonId: null, // Se asignará cuando se cree el salón
+
+      // Referencias
+      solicitudId: datosCliente.solicitudId,
+
+      // Estado
+      estado: 'activo',
+      emailVerificado: false,
+
+      // Plan y suscripción
+      planSeleccionado: datosCliente.planSeleccionado,
+      suscripcionId: null, // Se asignará cuando se procese el pago
+      estadoSuscripcion: 'pendiente', // pendiente, activa, cancelada, vencida
+
+      // Timestamps
+      fechaCreacion: admin.firestore.FieldValue.serverTimestamp(),
+      fechaUltimoAcceso: null,
+      fechaActualizacion: admin.firestore.FieldValue.serverTimestamp(),
+
+      // Metadata
+      creadoPor: 'auto_registro',
+      origen: 'landing_page'
+    }
+
+    // Guardar en Firestore
+    const docRef = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('clientes')
+      .add(cliente)
+
+    console.log(`✅ Cliente creado con ID: ${docRef.id}`)
+
+    return {
+      id: docRef.id,
+      usuario: cliente.usuario
+    }
+  } catch (error) {
+    console.error('❌ Error al crear cliente:', error)
+    throw error
+  }
+}
+
 export default {
   initializeFirebase,
   getFirestore,
   guardarSolicitudSuscripcion,
   obtenerSolicitudes,
-  actualizarEstadoSolicitud
+  actualizarEstadoSolicitud,
+  vincularClienteSolicitud,
+  buscarClientePorEmail,
+  buscarClientePorUsuario,
+  generarUsuarioUnico,
+  crearCliente
 }
