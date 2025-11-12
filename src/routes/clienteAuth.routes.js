@@ -1,0 +1,90 @@
+/**
+ * Rutas de Autenticación de Clientes
+ * Endpoints para login, verificación, perfil y cambio de contraseña
+ */
+
+import express from 'express'
+import { login, verifyToken, getProfile, changePassword } from '../controllers/clienteAuth.controller.js'
+import { authenticateCliente } from '../middlewares/clienteAuth.middleware.js'
+
+const router = express.Router()
+
+/**
+ * POST /api/clientes/login
+ * Login de cliente con usuario/email y contraseña
+ *
+ * Body:
+ * {
+ *   "identifier": "maria.garcia" o "maria@ejemplo.com",
+ *   "password": "Ab3k9Qz2"
+ * }
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "mensaje": "¡Login exitoso!",
+ *   "data": {
+ *     "token": "eyJhbGciOiJIUzI1...",
+ *     "cliente": { ... }
+ *   }
+ * }
+ */
+router.post('/login', login)
+
+/**
+ * GET /api/clientes/verify
+ * Verifica si el token JWT es válido
+ *
+ * Headers:
+ * Authorization: Bearer <token>
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "valido": true,
+ *   "data": { ... }
+ * }
+ */
+router.get('/verify', verifyToken)
+
+/**
+ * GET /api/clientes/me
+ * Obtiene el perfil completo del cliente autenticado
+ *
+ * Headers:
+ * Authorization: Bearer <token>
+ *
+ * Requiere: authenticateCliente middleware
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "data": { ... perfil completo ... }
+ * }
+ */
+router.get('/me', authenticateCliente, getProfile)
+
+/**
+ * POST /api/clientes/change-password
+ * Cambia la contraseña del cliente autenticado
+ *
+ * Headers:
+ * Authorization: Bearer <token>
+ *
+ * Body:
+ * {
+ *   "passwordActual": "Ab3k9Qz2",
+ *   "passwordNueva": "MiNuevaPassword123"
+ * }
+ *
+ * Requiere: authenticateCliente middleware
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "mensaje": "¡Contraseña cambiada exitosamente!"
+ * }
+ */
+router.post('/change-password', authenticateCliente, changePassword)
+
+export default router
