@@ -1,7 +1,9 @@
 /**
- * Setup global de Jest
+ * Setup global de Vitest
  * Se ejecuta antes de cada archivo de test
  */
+
+import { vi } from 'vitest'
 
 // Variables de entorno para tests
 process.env.NODE_ENV = 'test'
@@ -27,10 +29,10 @@ process.env.GOOGLE_APPLICATION_CREDENTIALS = './firebase-credentials-test.json'
 if (process.env.SILENT_TESTS === 'true') {
   global.console = {
     ...console,
-    log: jest.fn(),
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn()
+    log: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
   }
 }

@@ -3,6 +3,7 @@
  * Valida autenticación JWT y protección de rutas
  */
 
+import { describe, test, expect, beforeEach, vi } from 'vitest'
 import jwt from 'jsonwebtoken'
 import { authenticateToken, requireAdmin } from '../../middlewares/auth.middleware.js'
 
@@ -16,10 +17,10 @@ describe('Auth Middleware', () => {
       headers: {}
     }
     res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn().mockReturnThis()
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis()
     }
-    next = jest.fn()
+    next = vi.fn()
   })
 
   describe('authenticateToken', () => {

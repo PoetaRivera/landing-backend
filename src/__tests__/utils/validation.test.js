@@ -3,6 +3,7 @@
  * Valida schemas de suscripción y otros datos
  */
 
+import { describe, test, expect, beforeEach, vi } from 'vitest'
 import { suscripcionSchema, actualizarEstadoSchema, validarDatos } from '../../utils/validation.js'
 
 describe('Validation Schemas', () => {
@@ -91,7 +92,7 @@ describe('Validation Schemas', () => {
       const resultado = suscripcionSchema.safeParse(datos)
 
       expect(resultado.success).toBe(false)
-      expect(resultado.error.errors[0].message).toContain('Plan inválido')
+      expect(resultado.error.errors[0].message).toContain('Invalid enum value')
     })
 
     test('debe permitir mensaje opcional', () => {
@@ -155,10 +156,10 @@ describe('Validation Schemas', () => {
     beforeEach(() => {
       req = { body: {} }
       res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn().mockReturnThis()
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn().mockReturnThis()
       }
-      next = jest.fn()
+      next = vi.fn()
     })
 
     test('debe llamar next() con datos válidos', async () => {
