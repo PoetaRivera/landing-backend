@@ -23,9 +23,13 @@ if (!JWT_SECRET) {
  */
 export const authenticateCliente = (req, res, next) => {
   try {
-    // 1. Obtener el token del header Authorization
-    const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.split(' ')[1] // Bearer TOKEN
+    // 1. Obtener el token de cookies (preferido) o del header Authorization (fallback)
+    let token = req.cookies?.clienteToken // Leer de cookie primero
+
+    if (!token) {
+      const authHeader = req.headers['authorization']
+      token = authHeader && authHeader.split(' ')[1] // Bearer TOKEN (fallback)
+    }
 
     // 2. Verificar que el token existe
     if (!token) {
@@ -104,8 +108,13 @@ export const requireClienteActivo = (req, res, next) => {
  */
 export const optionalClienteAuth = (req, res, next) => {
   try {
-    const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.split(' ')[1]
+    // Obtener el token de cookies (preferido) o del header Authorization (fallback)
+    let token = req.cookies?.clienteToken
+
+    if (!token) {
+      const authHeader = req.headers['authorization']
+      token = authHeader && authHeader.split(' ')[1]
+    }
 
     if (!token) {
       // No hay token, pero eso está bien

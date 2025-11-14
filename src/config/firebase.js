@@ -26,12 +26,14 @@ export const initializeFirebase = () => {
 
     // Leer credenciales desde el archivo JSON
     // Si la ruta es absoluta (comienza con C:\ o /), usarla directamente
-    // Si es relativa, resolverla desde la raíz del proyecto
+    // Si es relativa, resolverla desde el directorio de trabajo (donde se ejecuta npm run dev)
     const envPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
     const isAbsolutePath = envPath.match(/^[a-zA-Z]:/) || envPath.startsWith('/')
+
+    // Resolver desde process.cwd() que es donde se ejecuta el comando
     const credentialsPath = isAbsolutePath
       ? envPath
-      : resolve(__dirname, '../../../', envPath)
+      : resolve(process.cwd(), envPath)
 
     const serviceAccount = JSON.parse(readFileSync(credentialsPath, 'utf8'))
 

@@ -6,9 +6,13 @@ import jwt from 'jsonwebtoken'
  */
 export const authenticateToken = (req, res, next) => {
   try {
-    // Obtener el token del header Authorization
-    const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.split(' ')[1] // Bearer TOKEN
+    // Obtener el token de cookies (preferido) o del header Authorization (fallback)
+    let token = req.cookies?.adminToken // Leer de cookie primero
+
+    if (!token) {
+      const authHeader = req.headers['authorization']
+      token = authHeader && authHeader.split(' ')[1] // Bearer TOKEN (fallback)
+    }
 
     if (!token) {
       return res.status(401).json({
@@ -80,8 +84,13 @@ export const requireAdmin = (req, res, next) => {
  * No bloquea si no hay token, pero lo valida si existe
  */
 export const optionalAuth = (req, res, next) => {
-  const authHeader = req.headers['authorization']
-  const token = authHeader && authHeader.split(' ')[1]
+  // Obtener el token de cookies (preferido) o del header Authorization (fallback)
+  let token = req.cookies?.adminToken
+
+  if (!token) {
+    const authHeader = req.headers['authorization']
+    token = authHeader && authHeader.split(' ')[1]
+  }
 
   if (!token) {
     req.user = null

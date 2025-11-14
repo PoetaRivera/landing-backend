@@ -112,12 +112,22 @@ export const login = async (req, res) => {
 
     console.log(`✅ Login exitoso de cliente: ${cliente.usuario} (${cliente.email})`)
 
-    // Responder con token y datos del cliente
+    // Configurar cookie HTTP-only
+    const cookieOptions = {
+      httpOnly: true, // No accesible desde JavaScript
+      secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+      sameSite: 'strict', // Protección CSRF
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 días en ms
+    }
+
+    // Enviar token en cookie
+    res.cookie('clienteToken', token, cookieOptions)
+
+    // Responder con datos del cliente (sin token en body)
     res.status(200).json({
       success: true,
       mensaje: '¡Login exitoso!',
       data: {
-        token,
         cliente: {
           id: cliente.id,
           nombreCompleto: cliente.nombreCompleto,

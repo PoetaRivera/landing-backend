@@ -99,11 +99,21 @@ export const login = async (req, res) => {
 
     console.log('✅ Login exitoso:', email)
 
-    // Responder con token y datos del usuario
+    // Configurar cookie HTTP-only
+    const cookieOptions = {
+      httpOnly: true, // No accesible desde JavaScript
+      secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+      sameSite: 'strict', // Protección CSRF
+      maxAge: 24 * 60 * 60 * 1000 // 24 horas en ms
+    }
+
+    // Enviar token en cookie
+    res.cookie('adminToken', token, cookieOptions)
+
+    // Responder con datos del usuario (sin token en body)
     res.status(200).json({
       success: true,
       mensaje: 'Login exitoso',
-      token,
       user: {
         id: userDoc.id,
         email: userData.email,

@@ -13,6 +13,7 @@ import {
 } from '../utils/validation.js'
 
 import { authenticateToken } from '../middlewares/auth.middleware.js'
+import { suscripcionLimiter, strictLimiter } from '../middlewares/rateLimiter.js'
 
 const router = Router()
 
@@ -23,6 +24,7 @@ const router = Router()
  */
 router.post(
   '/',
+  suscripcionLimiter,
   validarDatos(suscripcionSchema),
   crearSolicitud
 )

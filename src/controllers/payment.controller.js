@@ -217,6 +217,9 @@ export const handleWebhook = async (req, res) => {
  * Maneja el evento checkout.session.completed
  * Se dispara cuando un cliente completa el pago exitosamente
  * AQUÍ SE CREA EL CLIENTE Y SE ENVÍAN LOS EMAILS
+ *
+ * IMPORTANTE: Implementa idempotencia para evitar duplicados si Stripe
+ * reenvía el webhook
  */
 async function handleCheckoutSessionCompleted(session) {
   try {
@@ -246,6 +249,19 @@ async function handleCheckoutSessionCompleted(session) {
     }
 
     const datosSolicitud = solicitudDoc.data()
+
+    // 🔒 IDEMPOTENCIA: Verificar si ya fue procesado
+    if (datosSolicitud.estado === 'procesado') {
+      console.log(`⚠️  Webhook ya procesado anteriormente para solicitud: ${solicitudId}`)
+      console.log(`   Cliente ID existente: ${datosSolicitud.clienteId}`)
+      return // Salir sin error - webhook duplicado
+    }
+
+    // 🔒 IDEMPOTENCIA: Verificar por sessionId (por si cambió el estado manualmente)
+    if (datosSolicitud.stripeSessionId === session.id) {
+      console.log(`⚠️  Session ID ya registrado: ${session.id}`)
+      return
+    }
 
     // Importar utilidades necesarias
     const { generarCredencialesCliente } = await import('../utils/clienteUtils.js')

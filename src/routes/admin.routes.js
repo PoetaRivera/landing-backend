@@ -12,12 +12,14 @@ import {
   getSolicitudesAdmin
 } from '../controllers/admin.controller.js'
 import { authenticateToken, requireAdmin } from '../middlewares/auth.middleware.js'
+import { apiLimiter } from '../middlewares/rateLimiter.js'
 
 const router = express.Router()
 
 // Todas las rutas requieren autenticación de admin
 router.use(authenticateToken)
 router.use(requireAdmin)
+router.use(apiLimiter) // Rate limiting general para rutas admin
 
 /**
  * GET /api/admin/estadisticas

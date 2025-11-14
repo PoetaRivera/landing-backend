@@ -1,6 +1,10 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import helmet from 'helmet'
+import mongoSanitize from 'express-mongo-sanitize'
+import cookieParser from 'cookie-parser'
+import { validateEnv, getEnvInfo } from './config/validateEnv.js'
 import { initializeFirebase } from './config/firebase.js'
 import suscripcionesRoutes from './routes/suscripciones.routes.js'
 import authRoutes from './routes/auth.routes.js'
@@ -11,16 +15,50 @@ import adminRoutes from './routes/admin.routes.js'
 // Cargar variables de entorno
 dotenv.config()
 
+// 🔒 CRÍTICO: Validar variables de entorno ANTES de iniciar servidor
+validateEnv()
+
 const app = express()
 const PORT = process.env.PORT || 4001
+
+// Obtener información del ambiente
+const envInfo = getEnvInfo()
 
 // Inicializar Firebase
 initializeFirebase()
 
-// Middlewares
+// Middlewares de CORS - IMPORTANTE: credentials: true para cookies
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5174',
+  'http://127.0.0.1:5174'
+].filter(Boolean)
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5174',
-  credentials: true
+  origin: (origin, callback) => {
+    // Permitir requests sin origin (mobile apps, postman, etc)
+    if (!origin) return callback(null, true)
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true, // CRÍTICO: Permitir envío de cookies
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
+
+// Helmet para headers de seguridad
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+  crossOriginEmbedderPolicy: false // Necesario para Stripe y otras APIs externas
+}))
+
+// Sanitización contra NoSQL injection
+app.use(mongoSanitize({
+  replaceWith: '_' // Reemplaza caracteres prohibidos con _
 }))
 
 // IMPORTANTE: El webhook de Stripe debe recibir el raw body ANTES del parsing JSON
@@ -32,6 +70,7 @@ app.use(
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+app.use(cookieParser()) // Parsear cookies
 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -82,10 +121,12 @@ app.listen(PORT, () => {
 ║   🚀 Servidor Landing MultiSalon Iniciado            ║
 ║                                                       ║
 ║   🌐 URL: http://localhost:${PORT}                      ║
-║   📝 Ambiente: ${process.env.NODE_ENV || 'development'}                      ║
+║   📝 Ambiente: ${envInfo.nodeEnv}                               ║
+║   💳 Stripe: ${envInfo.stripeMode}                                   ║
+║   🎯 Frontend: ${envInfo.frontendUrl}           ║
 ║   ⏰ Hora: ${new Date().toLocaleString('es-SV')}          ║
 ║                                                       ║
-╔═══════════════════════════════════════════════════════╗
+╚═══════════════════════════════════════════════════════╝
   `)
 })
 

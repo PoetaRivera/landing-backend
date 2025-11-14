@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { login, verifyToken, getProfile, changePassword } from '../controllers/auth.controller.js'
 import { authenticateToken } from '../middlewares/auth.middleware.js'
+import { loginLimiter } from '../middlewares/rateLimiter.js'
 
 const router = Router()
 
@@ -9,7 +10,7 @@ const router = Router()
  * @desc    Login de administrador
  * @access  Público
  */
-router.post('/login', login)
+router.post('/login', loginLimiter, login)
 
 /**
  * @route   GET /api/auth/verify

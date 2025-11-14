@@ -6,6 +6,7 @@
 import express from 'express'
 import { login, verifyToken, getProfile, changePassword, forgotPassword, resetPassword } from '../controllers/clienteAuth.controller.js'
 import { authenticateCliente } from '../middlewares/clienteAuth.middleware.js'
+import { loginLimiter, passwordResetLimiter } from '../middlewares/rateLimiter.js'
 
 const router = express.Router()
 
@@ -29,7 +30,7 @@ const router = express.Router()
  *   }
  * }
  */
-router.post('/login', login)
+router.post('/login', loginLimiter, login)
 
 /**
  * GET /api/clientes/verify
@@ -102,7 +103,7 @@ router.post('/change-password', authenticateCliente, changePassword)
  *   "mensaje": "Si el email existe en nuestro sistema, recibirás un link de recuperación."
  * }
  */
-router.post('/forgot-password', forgotPassword)
+router.post('/forgot-password', passwordResetLimiter, forgotPassword)
 
 /**
  * POST /api/clientes/reset-password
@@ -120,6 +121,6 @@ router.post('/forgot-password', forgotPassword)
  *   "mensaje": "¡Contraseña restablecida exitosamente! Ya puedes iniciar sesión con tu nueva contraseña."
  * }
  */
-router.post('/reset-password', resetPassword)
+router.post('/reset-password', passwordResetLimiter, resetPassword)
 
 export default router
