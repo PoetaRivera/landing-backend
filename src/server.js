@@ -36,12 +36,17 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Permitir requests sin origin (mobile apps, postman, etc)
-    if (!origin) return callback(null, true)
+    // 🔒 SEGURIDAD: Solo permitir requests sin origin en desarrollo
+    // Esto es para Postman, Thunder Client, etc. durante desarrollo
+    if (!origin && process.env.NODE_ENV === 'development') {
+      return callback(null, true)
+    }
 
+    // Validar que el origin esté en la lista permitida
     if (allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
+      console.warn(`⚠️  CORS blocked origin: ${origin}`)
       callback(new Error('Not allowed by CORS'))
     }
   },

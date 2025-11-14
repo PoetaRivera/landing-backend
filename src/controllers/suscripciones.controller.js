@@ -110,19 +110,27 @@ export const crearSolicitud = async (req, res) => {
  */
 export const getSolicitudes = async (req, res) => {
   try {
-    const { estado, plan, limite } = req.query
+    const { estado, plan, limite, lastDocId } = req.query
 
     const filtros = {}
     if (estado) filtros.estado = estado
     if (plan) filtros.plan = plan
     if (limite) filtros.limite = parseInt(limite)
+    if (lastDocId) filtros.lastDocId = lastDocId
 
-    const solicitudes = await obtenerSolicitudes(filtros)
+    // 📄 Obtener solicitudes con paginación
+    const resultado = await obtenerSolicitudes(filtros)
 
     res.status(200).json({
       success: true,
-      total: solicitudes.length,
-      solicitudes
+      data: {
+        solicitudes: resultado.solicitudes,
+        pagination: {
+          total: resultado.total,
+          hasMore: resultado.hasMore,
+          lastDoc: resultado.lastDoc
+        }
+      }
     })
 
   } catch (error) {

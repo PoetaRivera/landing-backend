@@ -100,8 +100,15 @@ export const guardarSolicitudSuscripcion = async (datos) => {
 }
 
 /**
- * Obtiene todas las solicitudes de suscripción
+ * Obtiene todas las solicitudes de suscripción con paginación
  * Nueva estructura: landing-page/data/solicitudes
+ *
+ * @param {Object} filtros - Filtros de consulta
+ * @param {string} [filtros.estado] - Filtrar por estado
+ * @param {string} [filtros.plan] - Filtrar por plan
+ * @param {number} [filtros.limite=50] - Número de resultados por página
+ * @param {string} [filtros.lastDocId] - ID del último documento (para paginación)
+ * @returns {Promise<{solicitudes: Array, hasMore: boolean, lastDoc: string|null}>}
  */
 export const obtenerSolicitudes = async (filtros = {}) => {
   try {
@@ -123,10 +130,25 @@ export const obtenerSolicitudes = async (filtros = {}) => {
     // Ordenar por fecha descendente
     query = query.orderBy('fechaCreacion', 'desc')
 
-    // Limitar resultados si se especifica
-    if (filtros.limite) {
-      query = query.limit(filtros.limite)
+    // 🔒 PAGINACIÓN: Cursor-based pagination
+    if (filtros.lastDocId) {
+      // Obtener el documento de referencia
+      const lastDocRef = await db
+        .collection('landing-page')
+        .doc('data')
+        .collection('solicitudes')
+        .doc(filtros.lastDocId)
+        .get()
+
+      if (lastDocRef.exists) {
+        query = query.startAfter(lastDocRef)
+      }
     }
+
+    // Límite por defecto: 50 resultados
+    const limite = filtros.limite || 50
+    // Pedir 1 extra para saber si hay más resultados
+    query = query.limit(limite + 1)
 
     const snapshot = await query.get()
 
@@ -138,7 +160,21 @@ export const obtenerSolicitudes = async (filtros = {}) => {
       })
     })
 
-    return solicitudes
+    // Determinar si hay más resultados
+    const hasMore = solicitudes.length > limite
+    if (hasMore) {
+      solicitudes.pop() // Remover el documento extra
+    }
+
+    // ID del último documento para la siguiente página
+    const lastDoc = solicitudes.length > 0 ? solicitudes[solicitudes.length - 1].id : null
+
+    return {
+      solicitudes,
+      hasMore,
+      lastDoc,
+      total: solicitudes.length
+    }
   } catch (error) {
     console.error('❌ Error al obtener solicitudes:', error)
     throw error

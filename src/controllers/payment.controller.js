@@ -225,11 +225,29 @@ async function handleCheckoutSessionCompleted(session) {
   try {
     console.log(`✅ Checkout completado: ${session.id}`)
 
-    const { metadata, subscription, customer_email } = session
-    const solicitudId = metadata?.solicitudId
+    // 🔒 VALIDACIÓN: Verificar estructura del session object
+    if (!session || typeof session !== 'object') {
+      console.error('⚠️  Session object inválido')
+      return
+    }
 
-    if (!solicitudId) {
-      console.error('⚠️  No se encontró solicitudId en metadata')
+    const { metadata, subscription, customer_email, id: sessionId } = session
+
+    // 🔒 VALIDACIÓN: Verificar campos requeridos
+    if (!sessionId || !metadata || !customer_email) {
+      console.error('⚠️  Campos requeridos faltantes en session:', {
+        hasSessionId: !!sessionId,
+        hasMetadata: !!metadata,
+        hasEmail: !!customer_email
+      })
+      return
+    }
+
+    const solicitudId = metadata.solicitudId
+
+    // 🔒 VALIDACIÓN: Verificar solicitudId en metadata
+    if (!solicitudId || typeof solicitudId !== 'string') {
+      console.error('⚠️  solicitudId inválido o faltante en metadata:', metadata)
       return
     }
 
@@ -324,27 +342,58 @@ async function handleCheckoutSessionCompleted(session) {
         fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
       })
 
-    // Enviar emails de confirmación y credenciales
-    Promise.all([
-      enviarEmailConfirmacionCliente(datosSolicitud),
-      enviarEmailCredencialesCliente(
-        {
-          nombreCompleto: datosSolicitud.nombrePropietario,
-          email: datosSolicitud.email,
-          nombreSalon: datosSolicitud.nombreSalon
-        },
-        {
-          usuario: usuarioUnico,
-          passwordTemporal: credenciales.passwordTemporal
-        }
-      )
-    ])
-      .then(() => {
-        console.log(`✅ Emails de confirmación y credenciales enviados para solicitud ${solicitudId}`)
-      })
-      .catch(error => {
-        console.error('⚠️  Error al enviar emails (cliente creado exitosamente):', error.message)
-      })
+    // 📧 Enviar emails de confirmación y credenciales
+    // IMPORTANTE: No bloquear el webhook si los emails fallan
+    try {
+      await Promise.all([
+        enviarEmailConfirmacionCliente(datosSolicitud),
+        enviarEmailCredencialesCliente(
+          {
+            nombreCompleto: datosSolicitud.nombrePropietario,
+            email: datosSolicitud.email,
+            nombreSalon: datosSolicitud.nombreSalon
+          },
+          {
+            usuario: usuarioUnico,
+            passwordTemporal: credenciales.passwordTemporal
+          }
+        )
+      ])
+
+      console.log(`✅ Emails enviados exitosamente para solicitud ${solicitudId}`)
+
+      // Marcar emails como enviados
+      await db
+        .collection('landing-page')
+        .doc('data')
+        .collection('solicitudes')
+        .doc(solicitudId)
+        .update({
+          emailsEnviados: true,
+          fechaEmailsEnviados: admin.firestore.FieldValue.serverTimestamp()
+        })
+
+    } catch (emailError) {
+      console.error('⚠️  Error al enviar emails (cliente YA CREADO):', emailError.message)
+
+      // 🔒 CRÍTICO: Guardar error para reintento posterior
+      await db
+        .collection('landing-page')
+        .doc('data')
+        .collection('solicitudes')
+        .doc(solicitudId)
+        .update({
+          emailsEnviados: false,
+          emailError: {
+            mensaje: emailError.message,
+            fecha: admin.firestore.FieldValue.serverTimestamp(),
+            reintentos: 0
+          }
+        })
+        .catch(err => console.error('Error guardando fallo de email:', err))
+
+      // NO lanzar error - el cliente ya fue creado exitosamente
+    }
 
     console.log(`✅ Solicitud ${solicitudId} completamente procesada`)
   } catch (error) {
