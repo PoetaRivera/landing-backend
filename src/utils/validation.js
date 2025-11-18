@@ -42,7 +42,7 @@ export const suscripcionSchema = z.object({
     .trim(),
 
   plan: z
-    .enum(['Plan Básico - $15/mes', 'Plan Premium', 'Plan Enterprise'], {
+    .enum(['Plan Básico', 'Plan Premium', 'Plan Enterprise'], {
       required_error: 'Debes seleccionar un plan',
       invalid_type_error: 'Plan inválido'
     }),

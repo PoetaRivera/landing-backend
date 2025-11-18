@@ -30,12 +30,26 @@ export const STRIPE_PRICE_IDS = {
 
 /**
  * Obtiene el Price ID correspondiente a un plan
- * @param {string} plan - Nombre del plan (basico, estandar, premium)
+ * @param {string} plan - Nombre del plan ("Plan Básico", "Plan Premium", "Plan Enterprise")
  * @returns {string} - Price ID de Stripe
  */
 export const getPriceIdForPlan = (plan) => {
+  // Mapeo de nombres de planes del frontend a claves internas
+  const planMap = {
+    'plan básico': 'basico',
+    'plan básico - $15/mes': 'basico', // Compatibilidad con valor antiguo
+    'plan premium': 'premium',
+    'plan enterprise': 'estandar' // Enterprise usa el price ID de estándar por ahora
+  }
+
   const planLower = plan.toLowerCase()
-  const priceId = STRIPE_PRICE_IDS[planLower]
+  const planKey = planMap[planLower]
+
+  if (!planKey) {
+    throw new Error(`No se encontró mapeo para el plan: ${plan}`)
+  }
+
+  const priceId = STRIPE_PRICE_IDS[planKey]
 
   if (!priceId) {
     throw new Error(`No se encontró Price ID para el plan: ${plan}`)

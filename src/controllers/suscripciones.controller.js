@@ -1,39 +1,27 @@
 import {
   guardarSolicitudSuscripcion,
   obtenerSolicitudes,
-  actualizarEstadoSolicitud,
-  vincularClienteSolicitud,
-  generarUsuarioUnico,
-  crearCliente
+  actualizarEstadoSolicitud
 } from '../config/firebase.js'
 
 import {
   enviarEmailNuevaSolicitud,
-  enviarEmailConfirmacionCliente,
-  enviarEmailCredencialesCliente
+  enviarEmailConfirmacionCliente
 } from '../config/email.js'
 
-import { generarCredencialesCliente } from '../utils/clienteUtils.js'
-import { createCheckoutSession, getPriceIdForPlan } from '../config/stripe.js'
-import bcrypt from 'bcryptjs'
 import dotenv from 'dotenv'
 
 dotenv.config()
 
 /**
- * Crear una nueva solicitud de suscripción + Redirigir a Stripe Checkout
+ * Crear una nueva solicitud de suscripción (SIN Stripe)
  * POST /api/suscripciones
  *
- * Nuevo Flujo con Stripe:
+ * Flujo sin procesador de pagos:
  * 1. Guardar solicitud en Firestore
  * 2. Enviar email de notificación al admin
- * 3. Crear sesión de Checkout de Stripe
- * 4. Devolver URL de checkout para que el frontend redirija
- *
- * Después del pago exitoso (via webhook):
- * - Generar credenciales
- * - Crear cliente en Firestore
- * - Enviar emails de confirmación y credenciales
+ * 3. Enviar email de confirmación al cliente
+ * 4. El admin procesará manualmente el pago y activará la cuenta
  */
 export const crearSolicitud = async (req, res) => {
   try {
@@ -56,50 +44,27 @@ export const crearSolicitud = async (req, res) => {
       .then(() => console.log('✅ Email admin enviado'))
       .catch(error => console.error('⚠️  Error al enviar email admin:', error.message))
 
-    // PASO 3: Obtener Price ID de Stripe para el plan
-    const priceId = getPriceIdForPlan(datosSolicitud.plan)
+    // PASO 3: Enviar email de confirmación al cliente (no esperar)
+    enviarEmailConfirmacionCliente(datosSolicitud)
+      .then(() => console.log('✅ Email confirmación cliente enviado'))
+      .catch(error => console.error('⚠️  Error al enviar email cliente:', error.message))
 
-    // PASO 4: URLs de success y cancel
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174'
-    const successUrl = `${frontendUrl}/suscripcion/success?session_id={CHECKOUT_SESSION_ID}&solicitud_id=${solicitudId}`
-    const cancelUrl = `${frontendUrl}/suscripcion/cancel?solicitud_id=${solicitudId}`
-
-    // PASO 5: Crear sesión de Checkout de Stripe
-    const session = await createCheckoutSession({
-      priceId,
-      clienteEmail: datosSolicitud.email,
-      solicitudId,
-      successUrl,
-      cancelUrl
-    })
-
-    console.log(`💳 Checkout session creada: ${session.id}`)
-
-    // PASO 6: Responder con URL de checkout
+    // PASO 4: Responder con éxito (sin redirección a Stripe)
     res.status(201).json({
       success: true,
-      mensaje: '¡Solicitud recibida! Serás redirigido al checkout para completar el pago.',
+      mensaje: '¡Solicitud enviada exitosamente! Te contactaremos pronto para coordinar el pago y activación.',
       data: {
-        solicitudId: solicitudId,
-        checkoutUrl: session.url,
-        sessionId: session.id
+        solicitudId: solicitudId
       }
     })
 
   } catch (error) {
     console.error('❌ Error al crear solicitud:', error)
 
-    // Manejo de errores específicos
-    let mensajeError = 'Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente.'
-
-    if (error.message.includes('Price ID')) {
-      mensajeError = 'Plan de suscripción no válido. Por favor, selecciona un plan válido.'
-    }
-
     res.status(500).json({
       success: false,
       error: error.message || 'Error al procesar la solicitud',
-      mensaje: mensajeError
+      mensaje: 'Hubo un problema al procesar tu solicitud. Por favor, intenta nuevamente.'
     })
   }
 }
