@@ -71,6 +71,8 @@ async function createAdminUser() {
 
     // Verificar si el email ya existe
     const existingUser = await db
+      .collection('landing-page')
+      .doc('data')
       .collection('usuarios_admin')
       .where('email', '==', email.toLowerCase().trim())
       .limit(1)
@@ -103,7 +105,11 @@ async function createAdminUser() {
       ultimaIP: null
     }
 
-    const userRef = await db.collection('usuarios_admin').add(userData)
+    const userRef = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('usuarios_admin')
+      .add(userData)
 
     console.log('\n╔═══════════════════════════════════════════════════════╗')
     console.log('║                                                       ║')

@@ -9,7 +9,9 @@ import {
   getClienteById,
   updateClienteEstado,
   getEstadisticas,
-  getSolicitudesAdmin
+  getSolicitudesAdmin,
+  updateSolicitudEstado,
+  crearClienteDesdeSolicitud
 } from '../controllers/admin.controller.js'
 import { authenticateToken, requireAdmin } from '../middlewares/auth.middleware.js'
 import { apiLimiter } from '../middlewares/rateLimiter.js'
@@ -106,5 +108,51 @@ router.patch('/clientes/:id/estado', updateClienteEstado)
  * }
  */
 router.get('/solicitudes', getSolicitudesAdmin)
+
+/**
+ * PATCH /api/admin/solicitudes/:id/estado
+ * Actualizar estado de una solicitud
+ *
+ * Body:
+ * {
+ *   "estado": "pendiente" | "contactado" | "procesado" | "rechazado",
+ *   "notas": "Notas sobre el cambio (opcional)"
+ * }
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "mensaje": "Estado de solicitud actualizado exitosamente"
+ * }
+ */
+router.patch('/solicitudes/:id/estado', updateSolicitudEstado)
+
+/**
+ * POST /api/admin/solicitudes/:id/crear-cliente
+ * Crear cliente automáticamente desde una solicitud aprobada
+ *
+ * Proceso automático:
+ * 1. Obtiene datos de la solicitud
+ * 2. Genera usuario único basado en email
+ * 3. Genera contraseña temporal segura
+ * 4. Crea cliente en Firestore
+ * 5. Vincula solicitud con cliente
+ * 6. Actualiza solicitud a estado "procesado"
+ * 7. Envía email con credenciales al cliente
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "mensaje": "Cliente creado exitosamente",
+ *   "data": {
+ *     "clienteId": "abc123",
+ *     "usuario": "maria.garcia",
+ *     "passwordTemporal": "Luna-Gato-Mar-42",
+ *     "email": "maria@email.com",
+ *     "nombreSalon": "Bella Estética"
+ *   }
+ * }
+ */
+router.post('/solicitudes/:id/crear-cliente', crearClienteDesdeSolicitud)
 
 export default router

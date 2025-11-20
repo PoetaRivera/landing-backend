@@ -5,6 +5,13 @@
 
 import { getFirestore } from '../config/firebase.js'
 import admin from 'firebase-admin'
+import bcrypt from 'bcryptjs'
+import {
+  crearCliente,
+  vincularClienteSolicitud,
+  generarUsuarioUnico
+} from '../config/firebase.js'
+import { enviarEmailCredencialesCliente } from '../config/email.js'
 
 /**
  * Obtener todos los clientes con filtros opcionales
@@ -52,9 +59,9 @@ export const getClientes = async (req, res) => {
         planSeleccionado: data.planSeleccionado,
         estado: data.estado,
         estadoSuscripcion: data.estadoSuscripcion,
-        suscripcionId: data.suscripcionId,
+        salonId: data.salonId,
         fechaCreacion: data.fechaCreacion?.toDate().toISOString(),
-        fechaActualizacion: data.fechaActualizacion?.toDate().toISOString()
+        fechaUltimoAcceso: data.fechaUltimoAcceso?.toDate().toISOString()
       })
     })
 
@@ -74,7 +81,7 @@ export const getClientes = async (req, res) => {
 }
 
 /**
- * Obtener detalles de un cliente específico
+ * Obtener un cliente por ID
  * GET /api/admin/clientes/:id
  */
 export const getClienteById = async (req, res) => {
@@ -92,8 +99,7 @@ export const getClienteById = async (req, res) => {
     if (!clienteDoc.exists) {
       return res.status(404).json({
         success: false,
-        error: 'Cliente no encontrado',
-        mensaje: 'No se encontró un cliente con ese ID'
+        error: 'Cliente no encontrado'
       })
     }
 
@@ -200,7 +206,7 @@ export const getEstadisticas = async (req, res) => {
     })
 
     // Calcular estadísticas
-    const stats = {
+    const estadisticas = {
       clientes: {
         total: clientes.length,
         activos: clientes.filter(c => c.estado === 'activo').length,
@@ -209,9 +215,9 @@ export const getEstadisticas = async (req, res) => {
       },
       suscripciones: {
         activas: clientes.filter(c => c.estadoSuscripcion === 'activa').length,
+        pendientes: clientes.filter(c => c.estadoSuscripcion === 'pendiente').length,
         canceladas: clientes.filter(c => c.estadoSuscripcion === 'cancelada').length,
-        vencidas: clientes.filter(c => c.estadoSuscripcion === 'vencida').length,
-        pendientes: clientes.filter(c => c.estadoSuscripcion === 'pendiente').length
+        vencidas: clientes.filter(c => c.estadoSuscripcion === 'vencida').length
       },
       planes: {
         basico: clientes.filter(c => c.planSeleccionado?.includes('Básico')).length,
@@ -221,6 +227,7 @@ export const getEstadisticas = async (req, res) => {
       solicitudes: {
         total: solicitudes.length,
         pendientes: solicitudes.filter(s => s.estado === 'pendiente').length,
+        contactadas: solicitudes.filter(s => s.estado === 'contactado').length,
         procesadas: solicitudes.filter(s => s.estado === 'procesado').length,
         rechazadas: solicitudes.filter(s => s.estado === 'rechazado').length
       },
@@ -231,14 +238,14 @@ export const getEstadisticas = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      estadisticas: stats
+      estadisticas
     })
   } catch (error) {
     console.error('❌ Error al obtener estadísticas:', error)
     res.status(500).json({
       success: false,
       error: 'Error al obtener estadísticas',
-      mensaje: 'Ocurrió un error al calcular las estadísticas'
+      mensaje: 'Ocurrió un error al obtener las estadísticas'
     })
   }
 }
@@ -276,12 +283,14 @@ export const getSolicitudesAdmin = async (req, res) => {
   try {
     const { estado, plan, limite = 50, offset = 0 } = req.query
 
+    console.log('📋 Obteniendo solicitudes con filtros:', { estado, plan, limite, offset })
+
     const db = getFirestore()
     let query = db
       .collection('landing-page')
       .doc('data')
       .collection('solicitudes')
-      .orderBy('fechaSolicitud', 'desc')
+      .orderBy('fechaCreacion', 'desc')
 
     // Aplicar filtros
     if (estado) {
@@ -301,6 +310,8 @@ export const getSolicitudesAdmin = async (req, res) => {
 
     const snapshot = await query.get()
 
+    console.log(`✅ Solicitudes encontradas: ${snapshot.size}`)
+
     const solicitudes = []
     snapshot.forEach(doc => {
       const data = doc.data()
@@ -311,11 +322,13 @@ export const getSolicitudesAdmin = async (req, res) => {
         email: data.email,
         telefono: data.telefono,
         plan: data.plan,
+        mensaje: data.mensaje,
         estado: data.estado,
         clienteId: data.clienteId,
         stripeSessionId: data.stripeSessionId,
         stripeSubscriptionId: data.stripeSubscriptionId,
-        fechaSolicitud: data.fechaSolicitud?.toDate().toISOString(),
+        fechaSolicitud: data.fechaCreacion?.toDate().toISOString(),
+        fechaCreacion: data.fechaCreacion?.toDate().toISOString(),
         fechaPago: data.fechaPago?.toDate().toISOString(),
         fechaActualizacion: data.fechaActualizacion?.toDate().toISOString()
       })
@@ -336,10 +349,199 @@ export const getSolicitudesAdmin = async (req, res) => {
   }
 }
 
+/**
+ * Actualizar estado de una solicitud
+ * PATCH /api/admin/solicitudes/:id/estado
+ */
+export const updateSolicitudEstado = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { estado, notas } = req.body
+
+    // Validar estado
+    const estadosValidos = ['pendiente', 'contactado', 'procesado', 'rechazado']
+    if (!estadosValidos.includes(estado)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Estado inválido',
+        mensaje: `El estado debe ser uno de: ${estadosValidos.join(', ')}`
+      })
+    }
+
+    console.log(`🔄 Actualizando solicitud ${id} a estado: ${estado}`)
+
+    const db = getFirestore()
+    await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes')
+      .doc(id)
+      .update({
+        estado: estado,
+        notas: notas || null,
+        fechaActualizacion: admin.firestore.FieldValue.serverTimestamp(),
+        actualizadoPor: req.user.userId
+      })
+
+    console.log(`✅ Solicitud ${id} actualizada exitosamente`)
+
+    res.status(200).json({
+      success: true,
+      mensaje: 'Estado de solicitud actualizado exitosamente'
+    })
+  } catch (error) {
+    console.error('❌ Error al actualizar estado de solicitud:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error al actualizar estado',
+      mensaje: 'Ocurrió un error al actualizar el estado de la solicitud'
+    })
+  }
+}
+
+/**
+ * Crear cliente desde una solicitud aprobada
+ * POST /api/admin/solicitudes/:id/crear-cliente
+ */
+export const crearClienteDesdeSolicitud = async (req, res) => {
+  try {
+    const { id: solicitudId } = req.params
+
+    console.log(`👤 Creando cliente desde solicitud: ${solicitudId}`)
+
+    const db = getFirestore()
+
+    // 1. Obtener la solicitud
+    const solicitudDoc = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes')
+      .doc(solicitudId)
+      .get()
+
+    if (!solicitudDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'Solicitud no encontrada'
+      })
+    }
+
+    const solicitud = solicitudDoc.data()
+
+    // 2. Verificar que no tenga ya un cliente
+    if (solicitud.clienteId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Solicitud ya procesada',
+        mensaje: 'Esta solicitud ya tiene un cliente asociado',
+        clienteId: solicitud.clienteId
+      })
+    }
+
+    // 3. Generar usuario único basado en email
+    const emailBase = solicitud.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')
+    const usuarioBase = emailBase.substring(0, 15) // Máximo 15 caracteres
+    const usuarioUnico = await generarUsuarioUnico(usuarioBase)
+
+    // 4. Generar contraseña temporal segura
+    const passwordTemporal = generarPasswordTemporal()
+    const salt = await bcrypt.genSalt(10)
+    const passwordHash = await bcrypt.hash(passwordTemporal, salt)
+
+    console.log(`🔑 Usuario generado: ${usuarioUnico}`)
+
+    // 5. Crear cliente
+    const datosCliente = {
+      nombreCompleto: solicitud.nombrePropietario,
+      email: solicitud.email,
+      telefono: solicitud.telefono,
+      nombreSalon: solicitud.nombreSalon,
+      usuario: usuarioUnico,
+      passwordHash: passwordHash,
+      solicitudId: solicitudId,
+      planSeleccionado: solicitud.plan
+    }
+
+    const resultadoCliente = await crearCliente(datosCliente)
+    const clienteId = resultadoCliente.id
+
+    console.log(`✅ Cliente creado con ID: ${clienteId}`)
+
+    // 6. Vincular solicitud con cliente
+    await vincularClienteSolicitud(solicitudId, clienteId)
+
+    // 7. Actualizar estado de solicitud a "procesado"
+    await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes')
+      .doc(solicitudId)
+      .update({
+        estado: 'procesado',
+        fechaActualizacion: admin.firestore.FieldValue.serverTimestamp(),
+        actualizadoPor: req.user.userId
+      })
+
+    console.log(`✅ Solicitud ${solicitudId} marcada como procesada`)
+
+    // 8. Enviar email con credenciales (no esperar)
+    enviarEmailCredencialesCliente({
+      email: solicitud.email,
+      nombreCompleto: solicitud.nombrePropietario,
+      nombreSalon: solicitud.nombreSalon,
+      usuario: usuarioUnico,
+      passwordTemporal: passwordTemporal,
+      plan: solicitud.plan
+    })
+      .then(() => console.log('✅ Email con credenciales enviado'))
+      .catch(error => console.error('⚠️  Error al enviar email:', error.message))
+
+    // 9. Responder con éxito
+    res.status(201).json({
+      success: true,
+      mensaje: 'Cliente creado exitosamente',
+      data: {
+        clienteId: clienteId,
+        usuario: usuarioUnico,
+        passwordTemporal: passwordTemporal, // Solo para mostrar al admin
+        email: solicitud.email,
+        nombreSalon: solicitud.nombreSalon
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error al crear cliente desde solicitud:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error al crear cliente',
+      mensaje: 'Ocurrió un error al crear el cliente. Por favor, intenta nuevamente.'
+    })
+  }
+}
+
+/**
+ * Generar contraseña temporal segura
+ * Formato: 3 palabras + 2 números (ej: Luna-Gato-Mar-42)
+ */
+function generarPasswordTemporal() {
+  const palabras = [
+    'Sol', 'Luna', 'Mar', 'Rio', 'Luz', 'Flor', 'Gato', 'Perro',
+    'Cielo', 'Nube', 'Arbol', 'Cafe', 'Libro', 'Silla', 'Mesa', 'Casa'
+  ]
+
+  const palabra1 = palabras[Math.floor(Math.random() * palabras.length)]
+  const palabra2 = palabras[Math.floor(Math.random() * palabras.length)]
+  const palabra3 = palabras[Math.floor(Math.random() * palabras.length)]
+  const numeros = Math.floor(Math.random() * 90) + 10 // 10-99
+
+  return `${palabra1}-${palabra2}-${palabra3}-${numeros}`
+}
+
 export default {
   getClientes,
   getClienteById,
   updateClienteEstado,
   getEstadisticas,
-  getSolicitudesAdmin
+  getSolicitudesAdmin,
+  updateSolicitudEstado,
+  crearClienteDesdeSolicitud
 }

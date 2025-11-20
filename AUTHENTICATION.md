@@ -57,10 +57,10 @@ openssl rand -hex 32
 
 ### 2. Crear Base de Datos de Usuarios
 
-El sistema usa Firestore con una colección `usuarios_admin` que tiene la siguiente estructura:
+El sistema usa Firestore con una colección `landing-page/data/usuarios_admin` que tiene la siguiente estructura:
 
 ```javascript
-usuarios_admin/{userId}
+landing-page/data/usuarios_admin/{userId}
 {
   nombre: "Juan Pérez",
   email: "admin@multisalon.com",
@@ -111,7 +111,7 @@ Confirmar contraseña: ********
 ### Opción 2: Manualmente en Firestore Console
 
 1. Ve a Firebase Console > Firestore
-2. Crea la colección `usuarios_admin`
+2. Crea la estructura `landing-page` (colección) → `data` (documento) → `usuarios_admin` (subcolección)
 3. Genera el hash de contraseña con bcrypt
 4. Agrega el documento manualmente
 
@@ -475,7 +475,7 @@ axios.interceptors.response.use(
 
 ### "Usuario no encontrado"
 
-**Causa**: No hay usuarios en la colección `usuarios_admin`
+**Causa**: No hay usuarios en la colección `landing-page/data/usuarios_admin`
 **Solución**: Ejecutar `npm run create-admin`
 
 ### "Token inválido"

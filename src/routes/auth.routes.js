@@ -1,5 +1,12 @@
 import { Router } from 'express'
-import { login, verifyToken, getProfile, changePassword } from '../controllers/auth.controller.js'
+import {
+  login,
+  verifyToken,
+  getProfile,
+  changePassword,
+  forgotPassword,
+  resetPassword
+} from '../controllers/auth.controller.js'
 import { authenticateToken } from '../middlewares/auth.middleware.js'
 import { loginLimiter } from '../middlewares/rateLimiter.js'
 
@@ -32,5 +39,19 @@ router.get('/me', authenticateToken, getProfile)
  * @access  Privado (requiere token)
  */
 router.post('/change-password', authenticateToken, changePassword)
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Solicitar recuperación de contraseña (envía email con token)
+ * @access  Público
+ */
+router.post('/forgot-password', loginLimiter, forgotPassword)
+
+/**
+ * @route   POST /api/auth/reset-password/:token
+ * @desc    Resetear contraseña usando token de recuperación
+ * @access  Público (pero requiere token válido)
+ */
+router.post('/reset-password/:token', resetPassword)
 
 export default router

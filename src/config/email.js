@@ -201,16 +201,18 @@ export const enviarEmailConfirmacionCliente = async (datosSolicitud) => {
 }
 
 /**
- * Envía un email con las credenciales de acceso al cliente recién registrado
+ * Envía email al cliente con sus credenciales de acceso
  */
-export const enviarEmailCredencialesCliente = async (datosCliente, credenciales) => {
+export const enviarEmailCredencialesCliente = async (datos) => {
   try {
     const transporter = crearTransporter()
 
+    const { email, nombreCompleto, nombreSalon, usuario, passwordTemporal, plan } = datos
+
     const mailOptions = {
       from: `"MultiSalon" <${process.env.EMAIL_USER}>`,
-      to: datosCliente.email,
-      subject: '🔑 Tus Credenciales de Acceso - MultiSalon',
+      to: email,
+      subject: `🎉 ¡Bienvenido a MultiSalon! - Credenciales de Acceso`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -218,16 +220,15 @@ export const enviarEmailCredencialesCliente = async (datosCliente, credenciales)
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-            .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
-            .credentials-box { background: #f0fdf4; border: 2px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .credential-item { margin: 15px 0; }
-            .credential-label { font-weight: bold; color: #059669; display: block; margin-bottom: 5px; }
-            .credential-value { background: #ffffff; padding: 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 16px; font-weight: bold; color: #1f2937; border: 1px solid #d1d5db; }
-            .warning-box { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
-            .footer { background: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 14px; border-radius: 0 0 8px 8px; }
-            .button { display: inline-block; background: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
-            .steps { background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .credentials-box { background: white; border: 2px solid #10b981; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .credential-row { margin: 15px 0; }
+            .label { font-weight: bold; color: #374151; display: block; margin-bottom: 5px; }
+            .value { background: #f3f4f6; padding: 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 16px; color: #1f2937; border: 1px solid #d1d5db; }
+            .alert { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+            .button { display: inline-block; background: #10b981; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+            .footer { margin-top: 20px; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; border-top: 1px solid #e5e7eb; }
             ul { padding-left: 20px; }
             li { margin: 8px 0; }
           </style>
@@ -235,66 +236,82 @@ export const enviarEmailCredencialesCliente = async (datosCliente, credenciales)
         <body>
           <div class="container">
             <div class="header">
-              <h1 style="margin: 0; font-size: 28px;">🎉 ¡Bienvenido a MultiSalon!</h1>
-              <p style="margin: 10px 0 0 0; font-size: 16px;">Tu cuenta ha sido creada exitosamente</p>
+              <h1 style="margin: 0; font-size: 28px;">¡Bienvenido a MultiSalon!</h1>
+              <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Tu cuenta ha sido creada exitosamente</p>
             </div>
 
             <div class="content">
-              <p>Hola <strong>${datosCliente.nombreCompleto}</strong>,</p>
+              <p style="font-size: 16px;">Hola <strong>${nombreCompleto}</strong>,</p>
 
-              <p>¡Estamos emocionados de tenerte a bordo! Tu solicitud para <strong>${datosCliente.nombreSalon}</strong> ha sido recibida y hemos creado tu cuenta de acceso automáticamente.</p>
+              <p>¡Felicitaciones! Tu solicitud para <strong>${nombreSalon}</strong> ha sido aprobada y procesada exitosamente. Ya puedes acceder al sistema MultiSalon con las credenciales que encontrarás a continuación.</p>
 
               <div class="credentials-box">
-                <h3 style="margin-top: 0; color: #059669; text-align: center;">🔑 Tus Credenciales de Acceso</h3>
+                <h3 style="margin-top: 0; color: #10b981; text-align: center;">🔐 Tus Credenciales de Acceso</h3>
 
-                <div class="credential-item">
-                  <span class="credential-label">Usuario:</span>
-                  <div class="credential-value">${credenciales.usuario}</div>
+                <div class="credential-row">
+                  <span class="label">👤 Usuario:</span>
+                  <div class="value">${usuario}</div>
                 </div>
 
-                <div class="credential-item">
-                  <span class="credential-label">Contraseña Temporal:</span>
-                  <div class="credential-value">${credenciales.passwordTemporal}</div>
+                <div class="credential-row">
+                  <span class="label">🔑 Contraseña Temporal:</span>
+                  <div class="value">${passwordTemporal}</div>
+                </div>
+
+                <div class="credential-row">
+                  <span class="label">📧 Email:</span>
+                  <div class="value">${email}</div>
+                </div>
+
+                <div class="credential-row">
+                  <span class="label">📋 Plan:</span>
+                  <div class="value">${plan}</div>
                 </div>
               </div>
 
-              <div class="warning-box">
-                <strong>⚠️ Importante:</strong> Por seguridad, te recomendamos cambiar tu contraseña temporal en tu primer inicio de sesión. Puedes hacerlo desde tu perfil.
+              <div class="alert">
+                <strong>⚠️ Importante:</strong> Esta es una contraseña temporal. Te recomendamos cambiarla al iniciar sesión por primera vez por razones de seguridad.
               </div>
 
-              <div class="steps">
-                <h3 style="margin-top: 0; color: #2563eb;">📋 Próximos Pasos:</h3>
-                <ol>
-                  <li><strong>Guarda estas credenciales en un lugar seguro</strong></li>
-                  <li>Accede al portal del cliente con tus credenciales</li>
-                  <li>Cambia tu contraseña temporal por una segura</li>
-                  <li>Completa la información de tu perfil</li>
-                  <li>Nuestro equipo te contactará para coordinar los detalles del montaje</li>
-                </ol>
-              </div>
-
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.FRONTEND_URL || 'https://misalons.com'}/cliente/login" class="button">
-                  Acceder al Portal
+              <div style="text-align: center;">
+                <a href="https://app.multisalon.com/login" class="button" style="color: white;">
+                  Iniciar Sesión Ahora →
                 </a>
               </div>
 
-              <h3>✨ ¿Qué puedes hacer en el portal?</h3>
+              <h3 style="margin-top: 30px; color: #374151;">📋 Próximos Pasos:</h3>
+              <ol>
+                <li><strong>Inicia sesión</strong> en el sistema con tus credenciales</li>
+                <li><strong>Cambia tu contraseña</strong> por una personalizada</li>
+                <li><strong>Completa tu perfil</strong> con los datos de tu salón</li>
+                <li><strong>Configura tu catálogo</strong> de servicios y productos</li>
+                <li><strong>Personaliza los colores</strong> de tu sistema</li>
+                <li><strong>Invita a tu equipo</strong> de estilistas</li>
+              </ol>
+
+              <h3 style="color: #374151;">📚 Recursos Disponibles:</h3>
               <ul>
-                <li>Ver el estado de tu solicitud</li>
-                <li>Consultar información de tu salón (una vez configurado)</li>
-                <li>Ver el estado de tu suscripción</li>
-                <li>Gestionar tus datos de pago</li>
-                <li>Ver historial de pagos</li>
-                <li>Cancelar tu suscripción si lo necesitas</li>
-                <li>Actualizar tu información de contacto</li>
+                <li><strong>Manual de Usuario:</strong> Guía completa del sistema</li>
+                <li><strong>Videos Tutoriales:</strong> Aprende paso a paso</li>
+                <li><strong>Soporte Técnico:</strong> Estamos disponibles para ayudarte</li>
+                <li><strong>Capacitación:</strong> Sesión personalizada para tu equipo</li>
               </ul>
 
-              <p style="margin-top: 30px;">Si tienes alguna pregunta o necesitas ayuda, no dudes en responder a este correo o contactarnos.</p>
+              <div style="background: #eff6ff; border-radius: 8px; padding: 20px; margin-top: 25px;">
+                <h3 style="margin-top: 0; color: #2563eb;">💡 ¿Necesitas Ayuda?</h3>
+                <p style="margin-bottom: 0;">Nuestro equipo de soporte está listo para asistirte:</p>
+                <ul style="margin-bottom: 0;">
+                  <li>📧 Email: soporte@multisalon.com</li>
+                  <li>📱 WhatsApp: +503 1234-5678</li>
+                  <li>🕐 Horario: Lunes a Viernes, 8:00 AM - 6:00 PM</li>
+                </ul>
+              </div>
 
-              <p>¡Gracias por confiar en MultiSalon!</p>
+              <p style="margin-top: 30px; font-size: 16px;">
+                ¡Estamos emocionados de que formes parte de la familia MultiSalon!
+              </p>
 
-              <p style="margin-top: 30px;">
+              <p style="margin-top: 20px;">
                 Saludos cordiales,<br>
                 <strong>El equipo de MultiSalon</strong>
               </p>
@@ -302,9 +319,9 @@ export const enviarEmailCredencialesCliente = async (datosCliente, credenciales)
 
             <div class="footer">
               <p><strong>MultiSalon</strong> - Sistema de Gestión para Salones de Belleza</p>
-              <p>Email: info@multisalon.com</p>
-              <p style="font-size: 12px; color: #9ca3af; margin-top: 15px;">
-                Por favor, no compartas tus credenciales con nadie. Este es un email automático, pero puedes responder si necesitas ayuda.
+              <p>www.multisalon.com | soporte@multisalon.com</p>
+              <p style="font-size: 11px; color: #9ca3af; margin-top: 15px;">
+                Este correo contiene información confidencial. Por favor, manténla segura.
               </p>
             </div>
           </div>
@@ -314,28 +331,28 @@ export const enviarEmailCredencialesCliente = async (datosCliente, credenciales)
     }
 
     const info = await transporter.sendMail(mailOptions)
-    console.log('✅ Email de credenciales enviado al cliente:', info.messageId)
+    console.log('✅ Email con credenciales enviado:', info.messageId)
 
     return { success: true, messageId: info.messageId }
   } catch (error) {
-    console.error('❌ Error al enviar email de credenciales:', error)
+    console.error('❌ Error al enviar email con credenciales:', error)
     throw error
   }
 }
 
 /**
  * Envía un email con el link de recuperación de contraseña
+ * @param {Object} datos - { email, nombre, resetUrl, expiraEn }
  */
-export const enviarEmailRecuperacionPassword = async (email, nombreCompleto, resetToken) => {
+export const enviarEmailRecuperacionPassword = async (datos) => {
   try {
     const transporter = crearTransporter()
-
-    const resetUrl = `${process.env.FRONTEND_URL || 'https://misalons.com'}/cliente/reset-password?token=${resetToken}`
+    const { email, nombre, resetUrl, expiraEn } = datos
 
     const mailOptions = {
-      from: `"MultiSalon" <${process.env.EMAIL_USER}>`,
+      from: `"MultiSalon - Panel Admin" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: '🔒 Recuperación de Contraseña - MultiSalon',
+      subject: '🔒 Recuperación de Contraseña - Panel Administrativo',
       html: `
         <!DOCTYPE html>
         <html>
@@ -360,9 +377,9 @@ export const enviarEmailRecuperacionPassword = async (email, nombreCompleto, res
             </div>
 
             <div class="content">
-              <p>Hola <strong>${nombreCompleto}</strong>,</p>
+              <p>Hola <strong>${nombre}</strong>,</p>
 
-              <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en MultiSalon.</p>
+              <p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta de administrador en el Panel de MultiSalon.</p>
 
               <p>Si fuiste tú quien solicitó esto, haz clic en el siguiente botón para crear una nueva contraseña:</p>
 
@@ -380,8 +397,8 @@ export const enviarEmailRecuperacionPassword = async (email, nombreCompleto, res
               </div>
 
               <div class="warning-box">
-                <p style="margin: 0;"><strong>⏰ Este enlace expirará en 1 hora</strong></p>
-                <p style="margin: 10px 0 0 0; font-size: 14px;">Por razones de seguridad, el enlace solo será válido durante 1 hora.</p>
+                <p style="margin: 0;"><strong>⏰ Este enlace expirará en ${expiraEn}</strong></p>
+                <p style="margin: 10px 0 0 0; font-size: 14px;">Por razones de seguridad, el enlace solo será válido durante ${expiraEn}.</p>
               </div>
 
               <div class="warning-box">
@@ -396,10 +413,10 @@ export const enviarEmailRecuperacionPassword = async (email, nombreCompleto, res
             </div>
 
             <div class="footer">
-              <p><strong>MultiSalon</strong> - Sistema de Gestión para Salones de Belleza</p>
-              <p>Email: info@multisalon.com</p>
+              <p><strong>MultiSalon</strong> - Panel Administrativo</p>
+              <p>Email: soporte@multisalon.com</p>
               <p style="font-size: 12px; color: #9ca3af; margin-top: 15px;">
-                Este es un email automático, por favor no respondas a este mensaje.
+                Este es un email automático de seguridad. Si no solicitaste cambiar tu contraseña, ignora este mensaje.
               </p>
             </div>
           </div>
