@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser'
 import { validateEnv, getEnvInfo } from './config/validateEnv.js'
 import { initializeFirebase } from './config/firebase.js'
 import suscripcionesRoutes from './routes/suscripciones.routes.js'
+import solicitudesCompletasRoutes from './routes/solicitudesCompletas.routes.js'
 import authRoutes from './routes/auth.routes.js'
 import clienteAuthRoutes from './routes/clienteAuth.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
@@ -103,6 +104,7 @@ app.use('/api/auth', authRoutes) // Autenticación de admins
 app.use('/api/admin', adminRoutes) // Panel de administración
 app.use('/api/clientes', clienteAuthRoutes) // Autenticación de clientes
 app.use('/api/suscripciones', suscripcionesRoutes)
+app.use('/api/solicitudes-completas', solicitudesCompletasRoutes) // Formulario de onboarding completo
 app.use('/api/payment', paymentRoutes) // Pagos con Stripe
 
 // Manejo de errores 404
