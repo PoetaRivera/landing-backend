@@ -141,6 +141,37 @@ export const login = async (req, res) => {
 }
 
 /**
+ * Logout de administrador
+ * POST /api/auth/logout
+ *
+ * Limpia la cookie del token JWT
+ */
+export const logout = async (req, res) => {
+  try {
+    // Limpiar cookie
+    res.clearCookie('adminToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    })
+
+    console.log('✅ Logout exitoso de administrador')
+
+    res.status(200).json({
+      success: true,
+      mensaje: 'Sesión cerrada exitosamente'
+    })
+  } catch (error) {
+    console.error('❌ Error en logout de admin:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error en el servidor',
+      mensaje: 'Ocurrió un error al cerrar sesión.'
+    })
+  }
+}
+
+/**
  * Verificar token actual
  * GET /api/auth/verify
  */
@@ -497,6 +528,7 @@ export const resetPassword = async (req, res) => {
 
 export default {
   login,
+  logout,
   verifyToken,
   getProfile,
   changePassword,

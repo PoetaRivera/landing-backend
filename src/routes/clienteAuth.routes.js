@@ -4,7 +4,7 @@
  */
 
 import express from 'express'
-import { login, verifyToken, getProfile, changePassword, forgotPassword, resetPassword } from '../controllers/clienteAuth.controller.js'
+import { login, logout, verifyToken, getProfile, changePassword, forgotPassword, resetPassword } from '../controllers/clienteAuth.controller.js'
 import { authenticateCliente } from '../middlewares/clienteAuth.middleware.js'
 import { loginLimiter, passwordResetLimiter } from '../middlewares/rateLimiter.js'
 
@@ -33,11 +33,26 @@ const router = express.Router()
 router.post('/login', loginLimiter, login)
 
 /**
- * GET /api/clientes/verify
- * Verifica si el token JWT es válido
+ * POST /api/clientes/logout
+ * Cerrar sesión de cliente (limpia cookie)
  *
- * Headers:
+ * Response:
+ * {
+ *   "success": true,
+ *   "mensaje": "Sesión cerrada exitosamente"
+ * }
+ */
+router.post('/logout', logout)
+
+/**
+ * GET /api/clientes/verify
+ * Verifica si el token JWT es válido (cookie o header)
+ *
+ * Headers (opcional):
  * Authorization: Bearer <token>
+ *
+ * Cookie (preferido):
+ * clienteToken=<token>
  *
  * Response:
  * {
@@ -46,7 +61,7 @@ router.post('/login', loginLimiter, login)
  *   "data": { ... }
  * }
  */
-router.get('/verify', verifyToken)
+router.get('/verify', authenticateCliente, verifyToken)
 
 /**
  * GET /api/clientes/me

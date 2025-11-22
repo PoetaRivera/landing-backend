@@ -11,7 +11,8 @@ import {
   getEstadisticas,
   getSolicitudesAdmin,
   updateSolicitudEstado,
-  crearClienteDesdeSolicitud
+  crearClienteDesdeSolicitud,
+  confirmarPagoYCrearCliente
 } from '../controllers/admin.controller.js'
 import { authenticateToken, requireAdmin } from '../middlewares/auth.middleware.js'
 import { apiLimiter } from '../middlewares/rateLimiter.js'
@@ -154,5 +155,33 @@ router.patch('/solicitudes/:id/estado', updateSolicitudEstado)
  * }
  */
 router.post('/solicitudes/:id/crear-cliente', crearClienteDesdeSolicitud)
+
+/**
+ * POST /api/admin/solicitudes/:id/confirmar-pago
+ * Confirmar pago y crear cliente con acceso a onboarding
+ *
+ * Proceso automático:
+ * 1. Valida que la solicitud exista y no esté procesada
+ * 2. Genera usuario y contraseña temporal
+ * 3. Crea cliente en Firestore con estado "pendiente_onboarding"
+ * 4. Vincula solicitud con cliente
+ * 5. Actualiza solicitud a estado "pago_confirmado"
+ * 6. Envía email con credenciales y link al formulario de onboarding
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "mensaje": "Cliente creado exitosamente. Email de acceso enviado.",
+ *   "data": {
+ *     "clienteId": "abc123",
+ *     "usuario": "maria@email.com",
+ *     "passwordTemporal": "Luna-Gato-Mar-42",
+ *     "email": "maria@email.com",
+ *     "nombreSalon": "Bella Estética",
+ *     "estado": "pendiente_onboarding"
+ *   }
+ * }
+ */
+router.post('/solicitudes/:id/confirmar-pago', confirmarPagoYCrearCliente)
 
 export default router

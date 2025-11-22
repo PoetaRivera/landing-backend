@@ -66,8 +66,10 @@ export const login = async (req, res) => {
       })
     }
 
-    // Verificar que el cliente esté activo
-    if (cliente.estado !== 'activo') {
+    // Verificar que el cliente no esté suspendido o cancelado
+    // Permitir: activo, pendiente_onboarding, onboarding_completado
+    const estadosPermitidos = ['activo', 'pendiente_onboarding', 'onboarding_completado']
+    if (!estadosPermitidos.includes(cliente.estado)) {
       return res.status(403).json({
         success: false,
         error: 'Cuenta inactiva',
@@ -154,48 +156,59 @@ export const login = async (req, res) => {
  * Verificar token JWT
  * GET /api/clientes/verify
  *
- * Headers: Authorization: Bearer <token>
+ * Requiere: authenticateCliente middleware
+ * Cookie o Header: clienteToken (HTTP-only) o Authorization: Bearer <token>
  */
 export const verifyToken = async (req, res) => {
   try {
-    const authHeader = req.headers['authorization']
-    const token = authHeader && authHeader.split(' ')[1]
+    // El middleware authenticateCliente ya verificó el token y adjuntó req.cliente
+    const clienteId = req.cliente.clienteId
 
-    if (!token) {
+    // ✅ IMPORTANTE: Verificar que el usuario realmente exista en la base de datos
+    // Esto previene sesiones "fantasma" de usuarios eliminados
+    const db = getFirestore()
+    const clienteDoc = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('clientes')
+      .doc(clienteId)
+      .get()
+
+    if (!clienteDoc.exists) {
+      console.error(`❌ Token válido pero cliente no existe en DB: ${clienteId}`)
       return res.status(401).json({
         success: false,
-        error: 'Token no proporcionado',
-        valido: false
+        valido: false,
+        error: 'Usuario no encontrado',
+        mensaje: 'Tu cuenta ha sido eliminada o no existe.'
       })
     }
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-      if (err) {
-        return res.status(403).json({
-          success: false,
-          error: 'Token inválido o expirado',
-          valido: false
-        })
-      }
+    const clienteData = clienteDoc.data()
 
-      if (decoded.role !== 'cliente') {
-        return res.status(403).json({
-          success: false,
-          error: 'Token no es de cliente',
-          valido: false
-        })
-      }
-
-      res.status(200).json({
-        success: true,
-        valido: true,
-        data: {
-          clienteId: decoded.clienteId,
-          email: decoded.email,
-          usuario: decoded.usuario,
-          nombreCompleto: decoded.nombreCompleto
-        }
+    // Verificar que el cliente no esté suspendido o cancelado
+    const estadosPermitidos = ['activo', 'pendiente_onboarding', 'onboarding_completado']
+    if (!estadosPermitidos.includes(clienteData.estado)) {
+      console.error(`❌ Cliente existe pero estado no permitido: ${clienteData.estado}`)
+      return res.status(403).json({
+        success: false,
+        valido: false,
+        error: 'Cuenta inactiva',
+        mensaje: 'Tu cuenta está suspendida o cancelada. Contacta a soporte.'
       })
+    }
+
+    // Token válido y usuario existe
+    res.status(200).json({
+      success: true,
+      valido: true,
+      data: {
+        clienteId: clienteDoc.id,
+        email: clienteData.email,
+        usuario: clienteData.usuario,
+        nombreCompleto: clienteData.nombreCompleto,
+        estado: clienteData.estado
+      }
     })
   } catch (error) {
     console.error('❌ Error en verifyToken:', error)
@@ -219,6 +232,9 @@ export const getProfile = async (req, res) => {
     // req.cliente ya viene del middleware authenticateCliente
     const clienteId = req.cliente.clienteId
 
+    console.log(`📋 Intentando obtener perfil para clienteId: ${clienteId}`)
+    console.log(`📋 req.cliente completo:`, req.cliente)
+
     // Obtener datos completos del cliente desde Firestore
     const db = getFirestore()
     const clienteDoc = await db
@@ -228,7 +244,10 @@ export const getProfile = async (req, res) => {
       .doc(clienteId)
       .get()
 
+    console.log(`📋 clienteDoc.exists: ${clienteDoc.exists}`)
+
     if (!clienteDoc.exists) {
+      console.error(`❌ Cliente no encontrado en Firestore con ID: ${clienteId}`)
       return res.status(404).json({
         success: false,
         error: 'Cliente no encontrado',
@@ -237,6 +256,7 @@ export const getProfile = async (req, res) => {
     }
 
     const clienteData = clienteDoc.data()
+    console.log(`📋 Estado del cliente: ${clienteData.estado}`)
 
     // Preparar datos de respuesta (sin passwordHash)
     const perfil = {
@@ -286,6 +306,37 @@ export const getProfile = async (req, res) => {
  * Headers: Authorization: Bearer <token>
  * Requiere: authenticateCliente middleware
  */
+/**
+ * Logout de cliente
+ * POST /api/clientes/logout
+ *
+ * Limpia la cookie del token JWT
+ */
+export const logout = async (req, res) => {
+  try {
+    // Limpiar cookie
+    res.clearCookie('clienteToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    })
+
+    console.log('✅ Logout exitoso de cliente')
+
+    res.status(200).json({
+      success: true,
+      mensaje: 'Sesión cerrada exitosamente'
+    })
+  } catch (error) {
+    console.error('❌ Error en logout:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error en el servidor',
+      mensaje: 'Ocurrió un error al cerrar sesión.'
+    })
+  }
+}
+
 export const changePassword = async (req, res) => {
   try {
     const { passwordActual, passwordNueva } = req.body
@@ -423,8 +474,10 @@ export const forgotPassword = async (req, res) => {
       })
     }
 
-    // Verificar que el cliente esté activo
-    if (cliente.estado !== 'activo') {
+    // Verificar que el cliente no esté suspendido o cancelado
+    // Permitir: activo, pendiente_onboarding, onboarding_completado
+    const estadosPermitidos = ['activo', 'pendiente_onboarding', 'onboarding_completado']
+    if (!estadosPermitidos.includes(cliente.estado)) {
       return res.status(403).json({
         success: false,
         error: 'Cuenta inactiva',
@@ -532,6 +585,7 @@ export const resetPassword = async (req, res) => {
 
 export default {
   login,
+  logout,
   verifyToken,
   getProfile,
   changePassword,

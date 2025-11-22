@@ -23,6 +23,60 @@ export async function crearSalonCompleto(solicitud, salonId) {
     const batch = db.batch()
 
     // =====================================================================
+    // 0. OBTENER IMÁGENES DESDE cloudinary-pending (ya en ubicación final)
+    // =====================================================================
+    console.log('🖼️  Obteniendo URLs de imágenes desde cloudinary-pending...')
+
+    let imagenesRecursos = {
+      logo: '',
+      carrusel: [],
+      productos: [],
+      servicios: [],
+      estilistas: []
+    }
+
+    // Si la solicitud tiene salonId, leer desde cloudinary-pending
+    if (solicitud.salonId) {
+      try {
+        const pendingDoc = await db
+          .collection('landing-page')
+          .doc('data')
+          .collection('cloudinary-pending')
+          .doc(solicitud.salonId)
+          .get()
+
+        if (pendingDoc.exists) {
+          const data = pendingDoc.data()
+          imagenesRecursos = {
+            logo: data.logo || '',
+            carrusel: data.carrusel || [],
+            productos: data.productos || [],
+            servicios: data.servicios || [],
+            estilistas: data.estilistas || []
+          }
+          console.log('✅ URLs obtenidas desde cloudinary-pending')
+          console.log(`   - Logo: ${imagenesRecursos.logo ? 'Sí' : 'No'}`)
+          console.log(`   - Carrusel: ${imagenesRecursos.carrusel.length} imágenes`)
+          console.log(`   - Productos: ${imagenesRecursos.productos.length} imágenes`)
+          console.log(`   - Servicios: ${imagenesRecursos.servicios.length} imágenes`)
+          console.log(`   - Estilistas: ${imagenesRecursos.estilistas.length} imágenes`)
+        } else {
+          console.log('⚠️  No se encontró documento en cloudinary-pending, usando fallback')
+        }
+      } catch (error) {
+        console.error('⚠️  Error leyendo cloudinary-pending:', error.message)
+      }
+    }
+
+    // Fallback: Usar URLs de la solicitud si no hay en cloudinary-pending
+    if (!imagenesRecursos.logo && solicitud.logo) {
+      imagenesRecursos.logo = solicitud.logo
+    }
+    if (imagenesRecursos.carrusel.length === 0 && solicitud.imagenesCarrusel) {
+      imagenesRecursos.carrusel = solicitud.imagenesCarrusel
+    }
+
+    // =====================================================================
     // 1. CREAR METADATA EN salones_map/{salonId}
     // =====================================================================
     console.log('📋 Creando metadata en salones_map...')
@@ -95,7 +149,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
       },
 
       branding: {
-        logoUrl: solicitud.logo || '',
+        logoUrl: imagenesRecursos.logo, // ✅ URL desde cloudinary-pending
         paletaId: solicitud.paletaId || 'paleta1',
         customCSS: ''
       },
@@ -208,10 +262,10 @@ export async function crearSalonCompleto(solicitud, salonId) {
     const imagenesRef = salonRef.collection('imagenes').doc('urlcarrusel')
     batch.set(imagenesRef, {
       actualizadoEn: new Date().toISOString(),
-      imagen1: solicitud.imagenesCarrusel?.[0] || '',
-      imagen2: solicitud.imagenesCarrusel?.[1] || '',
-      imagen3: solicitud.imagenesCarrusel?.[2] || '',
-      imagen4: solicitud.imagenesCarrusel?.[3] || ''
+      imagen1: imagenesRecursos.carrusel[0] || '', // ✅ URLs desde cloudinary-pending
+      imagen2: imagenesRecursos.carrusel[1] || '',
+      imagen3: imagenesRecursos.carrusel[2] || '',
+      imagen4: imagenesRecursos.carrusel[3] || ''
     })
 
     console.log('✅ Imágenes preparadas')
@@ -265,7 +319,11 @@ export async function crearSalonCompleto(solicitud, salonId) {
     const serviciosFormulario = solicitud.servicios || []
 
     if (serviciosFormulario.length > 0) {
-      for (const servicio of serviciosFormulario) {
+      for (let i = 0; i < serviciosFormulario.length; i++) {
+        const servicio = serviciosFormulario[i]
+        // Usar URL de cloudinary-pending si existe, sino usar la del formulario
+        const urlServicio = imagenesRecursos.servicios[i] || servicio.url || ''
+
         await salonRef.collection('servicios').add({
           activo: servicio.activo !== false,
           actualizadoEn: new Date().toISOString(),
@@ -281,7 +339,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
           ordenMostrar: 0,
           precio: parseFloat(servicio.precio) || 10,
           precioOferta: 0,
-          url: servicio.url || ''
+          url: urlServicio
         })
       }
       console.log(`✅ ${serviciosFormulario.length} servicios creados`)
@@ -315,7 +373,11 @@ export async function crearSalonCompleto(solicitud, salonId) {
     const productosFormulario = solicitud.productos || []
 
     if (productosFormulario.length > 0) {
-      for (const producto of productosFormulario) {
+      for (let i = 0; i < productosFormulario.length; i++) {
+        const producto = productosFormulario[i]
+        // Usar URL de cloudinary-pending si existe, sino usar la del formulario
+        const urlProducto = imagenesRecursos.productos[i] || producto.url || ''
+
         await salonRef.collection('productos').add({
           activo: producto.activo !== false,
           actualizadoEn: new Date().toISOString(),
@@ -335,7 +397,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
           stock: producto.stock || 10,
           stockMinimo: producto.stockMinimo || 5,
           tags: [],
-          url: producto.url || ''
+          url: urlProducto
         })
       }
       console.log(`✅ ${productosFormulario.length} productos creados`)
@@ -366,29 +428,60 @@ export async function crearSalonCompleto(solicitud, salonId) {
     }
 
     // =====================================================================
-    // 12. CREAR 6 ESTILISTAS INICIALES
+    // 12. CREAR ESTILISTAS
     // =====================================================================
-    console.log('💇 Creando 6 estilistas iniciales...')
+    console.log('💇 Creando estilistas...')
 
     const estilistasCreados = []
+    const estilistasFormulario = solicitud.estilistas || []
 
-    for (let i = 1; i <= 6; i++) {
-      const estilistaData = {
-        nombre: `Estilista ${i}`,
-        relacion: `empleado${i}`,
-        estilista: true,
-        activo: true,
-        usuarioId: '',
-        especialidad: 'General',
-        url: '',
-        creadoEn: new Date().toISOString()
+    // Crear estilistas desde el formulario si existen
+    if (estilistasFormulario.length > 0) {
+      for (let i = 0; i < estilistasFormulario.length; i++) {
+        const estilista = estilistasFormulario[i]
+        // Usar URL de cloudinary-pending si existe, sino usar la del formulario
+        const urlEstilista = imagenesRecursos.estilistas[i] || estilista.url || estilista.imagen || ''
+
+        const estilistaData = {
+          nombre: estilista.nombre || `Estilista ${i + 1}`,
+          relacion: `empleado${i + 1}`,
+          estilista: true,
+          activo: estilista.activo !== false,
+          usuarioId: '',
+          especialidad: estilista.especialidad || 'General',
+          url: urlEstilista,
+          creadoEn: new Date().toISOString()
+        }
+
+        const docRef = await salonRef.collection('estilistas').add(estilistaData)
+        estilistasCreados.push({ id: docRef.id, ...estilistaData })
       }
-
-      const docRef = await salonRef.collection('estilistas').add(estilistaData)
-      estilistasCreados.push({ id: docRef.id, ...estilistaData })
+      console.log(`✅ ${estilistasFormulario.length} estilistas creados desde formulario`)
     }
 
-    console.log('✅ 6 estilistas creados')
+    // Completar hasta 6 estilistas si hay menos
+    const estilistasRestantes = 6 - estilistasCreados.length
+    if (estilistasRestantes > 0) {
+      for (let i = 0; i < estilistasRestantes; i++) {
+        const numeroEstilista = estilistasCreados.length + i + 1
+        const estilistaData = {
+          nombre: `Estilista ${numeroEstilista}`,
+          relacion: `empleado${numeroEstilista}`,
+          estilista: true,
+          activo: true,
+          usuarioId: '',
+          especialidad: 'General',
+          url: '',
+          creadoEn: new Date().toISOString()
+        }
+
+        const docRef = await salonRef.collection('estilistas').add(estilistaData)
+        estilistasCreados.push({ id: docRef.id, ...estilistaData })
+      }
+      console.log(`✅ ${estilistasRestantes} estilistas demo creados para completar 6`)
+    }
+
+    console.log(`✅ Total: ${estilistasCreados.length} estilistas creados`)
 
     // =====================================================================
     // RESUMEN

@@ -4,6 +4,7 @@ import dotenv from 'dotenv'
 import helmet from 'helmet'
 import mongoSanitize from 'express-mongo-sanitize'
 import cookieParser from 'cookie-parser'
+import fileUpload from 'express-fileupload'
 import { validateEnv, getEnvInfo } from './config/validateEnv.js'
 import { initializeFirebase } from './config/firebase.js'
 import suscripcionesRoutes from './routes/suscripciones.routes.js'
@@ -12,6 +13,8 @@ import authRoutes from './routes/auth.routes.js'
 import clienteAuthRoutes from './routes/clienteAuth.routes.js'
 import paymentRoutes from './routes/payment.routes.js'
 import adminRoutes from './routes/admin.routes.js'
+import uploadRoutes from './routes/upload.routes.js'
+import cloudinaryPendingRoutes from './routes/cloudinaryPending.routes.js'
 
 // Cargar variables de entorno
 dotenv.config()
@@ -82,6 +85,18 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser()) // Parsear cookies
 
+// Middleware para subir archivos
+app.use(
+  fileUpload({
+    useTempFiles: true,
+    tempFileDir: '/tmp/',
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB máximo
+    abortOnLimit: true,
+    createParentPath: true,
+    debug: false // Desactivado para evitar warnings molestos
+  })
+)
+
 // Ruta de prueba
 app.get('/', (req, res) => {
   res.json({
@@ -106,6 +121,8 @@ app.use('/api/clientes', clienteAuthRoutes) // Autenticación de clientes
 app.use('/api/suscripciones', suscripcionesRoutes)
 app.use('/api/solicitudes-completas', solicitudesCompletasRoutes) // Formulario de onboarding completo
 app.use('/api/payment', paymentRoutes) // Pagos con Stripe
+app.use('/api/upload', uploadRoutes) // Upload de imágenes a Cloudinary
+app.use('/api/cloudinary-pending', cloudinaryPendingRoutes) // Gestión de recursos pendientes
 
 // Manejo de errores 404
 app.use((req, res) => {

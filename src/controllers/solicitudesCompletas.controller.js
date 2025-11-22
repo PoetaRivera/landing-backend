@@ -23,6 +23,7 @@ export const crearSolicitudCompleta = async (req, res) => {
     const datosFormulario = req.body
 
     console.log('📝 Creando solicitud completa...')
+    console.log(`   SalonId: ${datosFormulario.salonId || 'No especificado'}`)
 
     const db = getFirestore()
 
@@ -98,9 +99,9 @@ export const crearSolicitudCompleta = async (req, res) => {
       fechaCreacion: admin.firestore.FieldValue.serverTimestamp(),
       fechaActualizacion: admin.firestore.FieldValue.serverTimestamp(),
 
-      // Referencias (se llenan después)
-      clienteId: null,
-      salonId: null,
+      // Referencias - salonId se pasa desde el frontend (recursos ya en Cloudinary)
+      clienteId: datosFormulario.clienteId || null, // NUEVO: clienteId del cliente autenticado
+      salonId: datosFormulario.salonId || null, // NUEVO: salonId asociado a recursos en cloudinary-pending
       notas: datosFormulario.notas || '',
       mensaje: datosFormulario.mensaje || ''
     }
@@ -113,6 +114,48 @@ export const crearSolicitudCompleta = async (req, res) => {
       .add(solicitudCompleta)
 
     console.log(`✅ Solicitud completa creada: ${docRef.id}`)
+
+    // Si hay clienteId, actualizar estado del cliente a 'onboarding_completado'
+    if (datosFormulario.clienteId) {
+      try {
+        await db
+          .collection('landing-page')
+          .doc('data')
+          .collection('clientes')
+          .doc(datosFormulario.clienteId)
+          .update({
+            estado: 'onboarding_completado', // Cliente completó el formulario, pendiente de aprobación admin
+            onboardingId: docRef.id, // Vincular con la solicitud completa
+            fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
+          })
+
+        console.log(`✅ Cliente actualizado a 'onboarding_completado': ${datosFormulario.clienteId}`)
+      } catch (error) {
+        console.error('⚠️  Error actualizando estado del cliente:', error)
+        // No fallar si esto falla
+      }
+    }
+
+    // Si hay salonId, vincular en cloudinary-pending
+    if (datosFormulario.salonId) {
+      try {
+        await db
+          .collection('landing-page')
+          .doc('data')
+          .collection('cloudinary-pending')
+          .doc(datosFormulario.salonId)
+          .update({
+            solicitudId: docRef.id,
+            clienteId: datosFormulario.clienteId || null, // Vincular también el clienteId
+            fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
+          })
+
+        console.log(`✅ SolicitudId vinculado en cloudinary-pending: ${datosFormulario.salonId}`)
+      } catch (error) {
+        console.error('⚠️  Error vinculando solicitudId en cloudinary-pending:', error)
+        // No fallar si esto falla
+      }
+    }
 
     // TODO: Enviar email de confirmación al cliente
     // TODO: Enviar email de notificación al admin
@@ -439,9 +482,103 @@ function generarPasswordTemporal() {
   return `${palabra1}-${palabra2}-${palabra3}-${numeros}`
 }
 
+/**
+ * Rechazar solicitud y eliminar recursos de Cloudinary
+ * PATCH /api/admin/solicitudes-completas/:id/rechazar
+ */
+export const rechazarSolicitudCompleta = async (req, res) => {
+  try {
+    const { id: solicitudId } = req.params
+    const { razon } = req.body
+
+    console.log(`❌ Rechazando solicitud completa: ${solicitudId}`)
+
+    const db = getFirestore()
+
+    // 1. Obtener la solicitud
+    const solicitudDoc = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes_completas')
+      .doc(solicitudId)
+      .get()
+
+    if (!solicitudDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'Solicitud no encontrada'
+      })
+    }
+
+    const solicitud = solicitudDoc.data()
+    const salonId = solicitud.salonId
+
+    // 2. Actualizar estado a rechazado
+    await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes_completas')
+      .doc(solicitudId)
+      .update({
+        estado: 'rechazado',
+        razonRechazo: razon || 'Sin razón especificada',
+        fechaRechazo: admin.firestore.FieldValue.serverTimestamp(),
+        fechaActualizacion: admin.firestore.FieldValue.serverTimestamp(),
+        actualizadoPor: req.user?.userId || 'admin'
+      })
+
+    console.log(`✅ Solicitud marcada como rechazada: ${solicitudId}`)
+
+    // 3. Si hay salonId, eliminar recursos de Cloudinary
+    if (salonId) {
+      try {
+        // Eliminar recursos de Cloudinary usando la utilidad existente
+        const { eliminarRecursos } = await import('./cloudinaryPending.controller.js')
+
+        // Simular req/res para la función de eliminación
+        const mockReq = { params: { salonId } }
+        const mockRes = {
+          status: () => mockRes,
+          json: (data) => {
+            if (data.success) {
+              console.log(`✅ Recursos de Cloudinary eliminados: ${salonId}`)
+            } else {
+              console.error(`⚠️  Error eliminando recursos: ${data.error}`)
+            }
+            return mockRes
+          }
+        }
+
+        await eliminarRecursos(mockReq, mockRes)
+      } catch (cloudinaryError) {
+        console.error('⚠️  Error al eliminar recursos de Cloudinary:', cloudinaryError)
+        // Continuar aunque falle la eliminación de Cloudinary
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      mensaje: 'Solicitud rechazada y recursos eliminados exitosamente',
+      data: {
+        solicitudId,
+        salonId: salonId || null,
+        recursosEliminados: salonId ? true : false
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error al rechazar solicitud:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error al rechazar solicitud',
+      mensaje: 'Ocurrió un error al rechazar la solicitud'
+    })
+  }
+}
+
 export default {
   crearSolicitudCompleta,
   getSolicitudesCompletas,
   getSolicitudCompletaById,
-  crearSalonDesdeSolicitudCompleta
+  crearSalonDesdeSolicitudCompleta,
+  rechazarSolicitudCompleta
 }

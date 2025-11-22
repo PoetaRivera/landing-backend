@@ -435,9 +435,138 @@ export const enviarEmailRecuperacionPassword = async (datos) => {
   }
 }
 
+/**
+ * Enviar email con credenciales de acceso al onboarding
+ */
+export const enviarEmailCredencialesOnboarding = async (datos) => {
+  try {
+    const transporter = crearTransporter()
+
+    const { email, nombreCompleto, nombreSalon, usuario, passwordTemporal, plan } = datos
+
+    const mailOptions = {
+      from: `"MultiSalon" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `✅ Pago Confirmado - Acceso al Formulario de Configuración`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; padding: 30px 20px; border-radius: 8px 8px 0 0; text-align: center; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .credentials-box { background: white; border: 2px solid #2563eb; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .credential-row { margin: 15px 0; }
+            .label { font-weight: bold; color: #374151; display: block; margin-bottom: 5px; }
+            .value { background: #f3f4f6; padding: 12px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 16px; color: #1f2937; border: 1px solid #d1d5db; }
+            .alert { background: #dbeafe; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0; border-radius: 4px; }
+            .button { display: inline-block; background: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+            .footer { margin-top: 20px; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; border-top: 1px solid #e5e7eb; }
+            ol { padding-left: 20px; }
+            li { margin: 10px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0; font-size: 28px;">¡Pago Confirmado!</h1>
+              <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Completa la configuración de tu salón</p>
+            </div>
+
+            <div class="content">
+              <p style="font-size: 16px;">Hola <strong>${nombreCompleto}</strong>,</p>
+
+              <p>¡Excelentes noticias! Hemos confirmado tu pago para <strong>${nombreSalon}</strong>. Ahora puedes acceder al formulario de configuración para completar la información de tu salón.</p>
+
+              <div class="credentials-box">
+                <h3 style="margin-top: 0; color: #2563eb; text-align: center;">🔐 Tus Credenciales de Acceso</h3>
+
+                <div class="credential-row">
+                  <span class="label">👤 Usuario:</span>
+                  <div class="value">${usuario}</div>
+                </div>
+
+                <div class="credential-row">
+                  <span class="label">🔑 Contraseña Temporal:</span>
+                  <div class="value">${passwordTemporal}</div>
+                </div>
+
+                <div class="credential-row">
+                  <span class="label">📋 Plan Seleccionado:</span>
+                  <div class="value">${plan}</div>
+                </div>
+              </div>
+
+              <div class="alert">
+                <strong>📝 Importante:</strong> Estas credenciales te permitirán acceder al formulario de configuración. Una vez completado, recibirás acceso al sistema completo de MultiSalon.
+              </div>
+
+              <div style="text-align: center;">
+                <a href="${process.env.FRONTEND_URL}/cliente/login" class="button" style="color: white;">
+                  Acceder al Formulario →
+                </a>
+              </div>
+
+              <h3 style="margin-top: 30px; color: #374151;">📋 Próximos Pasos:</h3>
+              <ol>
+                <li><strong>Inicia sesión</strong> con las credenciales proporcionadas</li>
+                <li><strong>Completa el formulario</strong> de 9 pasos con la información de tu salón:
+                  <ul>
+                    <li>Logo y branding</li>
+                    <li>Paleta de colores</li>
+                    <li>Servicios y productos</li>
+                    <li>Equipo de estilistas</li>
+                    <li>Imágenes del salón</li>
+                    <li>Horarios y configuración</li>
+                  </ul>
+                </li>
+                <li><strong>Envía el formulario</strong> para revisión</li>
+                <li><strong>Recibe acceso al sistema</strong> (24-48 horas)</li>
+              </ol>
+
+              <div style="background: #fef3c7; border-radius: 8px; padding: 20px; margin-top: 25px; border-left: 4px solid #f59e0b;">
+                <h3 style="margin-top: 0; color: #92400e;">⏰ Tiempo Estimado</h3>
+                <p style="margin-bottom: 0;">Completar el formulario toma aproximadamente <strong>15-20 minutos</strong>. Puedes guardar tu progreso y continuar después si lo necesitas.</p>
+              </div>
+
+              <div style="background: #eff6ff; border-radius: 8px; padding: 20px; margin-top: 25px;">
+                <h3 style="margin-top: 0; color: #2563eb;">💡 ¿Necesitas Ayuda?</h3>
+                <p>Si tienes alguna duda o problema, contáctanos:</p>
+                <ul style="margin-bottom: 0;">
+                  <li>📧 Email: soporte@multisalon.com</li>
+                  <li>📱 WhatsApp: +503 1234-5678</li>
+                  <li>⏰ Horario: Lunes a Viernes, 9:00 AM - 6:00 PM</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="footer">
+              <p><strong>MultiSalon</strong> - Sistema de Gestión para Salones de Belleza</p>
+              <p style="margin: 5px 0;">Este correo fue generado automáticamente</p>
+              <p style="margin: 5px 0; color: #9ca3af;">Si no solicitaste este acceso, puedes ignorar este mensaje</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    }
+
+    const info = await transporter.sendMail(mailOptions)
+    console.log('✅ Email de credenciales onboarding enviado:', info.messageId)
+
+    return { success: true, messageId: info.messageId }
+  } catch (error) {
+    console.error('❌ Error al enviar email de credenciales onboarding:', error)
+    throw error
+  }
+}
+
 export default {
   enviarEmailNuevaSolicitud,
   enviarEmailConfirmacionCliente,
   enviarEmailCredencialesCliente,
-  enviarEmailRecuperacionPassword
+  enviarEmailRecuperacionPassword,
+  enviarEmailCredencialesOnboarding
 }

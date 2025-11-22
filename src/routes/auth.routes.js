@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import {
   login,
+  logout,
   verifyToken,
   getProfile,
   changePassword,
@@ -18,6 +19,13 @@ const router = Router()
  * @access  Público
  */
 router.post('/login', loginLimiter, login)
+
+/**
+ * @route   POST /api/auth/logout
+ * @desc    Cerrar sesión de administrador (limpia cookie)
+ * @access  Público
+ */
+router.post('/logout', logout)
 
 /**
  * @route   GET /api/auth/verify

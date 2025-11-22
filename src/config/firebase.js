@@ -375,19 +375,19 @@ export const crearCliente = async (datosCliente) => {
 
       // Información del salón
       nombreSalon: datosCliente.nombreSalon,
-      salonId: null, // Se asignará cuando se cree el salón
+      salonId: datosCliente.salonId || null, // Se asignará cuando se cree el salón
 
       // Referencias
       solicitudId: datosCliente.solicitudId,
 
-      // Estado
-      estado: 'activo',
+      // Estado - IMPORTANTE: respetar el estado que se pasa, si no, usar 'activo'
+      estado: datosCliente.estado || 'activo',
       emailVerificado: false,
 
       // Plan y suscripción
       planSeleccionado: datosCliente.planSeleccionado,
       suscripcionId: null, // Se asignará cuando se procese el pago
-      estadoSuscripcion: 'pendiente', // pendiente, activa, cancelada, vencida
+      estadoSuscripcion: datosCliente.estadoSuscripcion || 'pendiente', // pendiente, activa, cancelada, vencida
 
       // Timestamps
       fechaCreacion: admin.firestore.FieldValue.serverTimestamp(),
@@ -395,8 +395,8 @@ export const crearCliente = async (datosCliente) => {
       fechaActualizacion: admin.firestore.FieldValue.serverTimestamp(),
 
       // Metadata
-      creadoPor: 'auto_registro',
-      origen: 'landing_page'
+      creadoPor: datosCliente.creadoPor || 'auto_registro',
+      origen: datosCliente.origen || 'landing_page'
     }
 
     // Guardar en Firestore

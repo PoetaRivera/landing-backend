@@ -11,7 +11,10 @@ import {
   vincularClienteSolicitud,
   generarUsuarioUnico
 } from '../config/firebase.js'
-import { enviarEmailCredencialesCliente } from '../config/email.js'
+import {
+  enviarEmailCredencialesCliente,
+  enviarEmailCredencialesOnboarding
+} from '../config/email.js'
 
 /**
  * Obtener todos los clientes con filtros opcionales
@@ -536,6 +539,129 @@ function generarPasswordTemporal() {
   return `${palabra1}-${palabra2}-${palabra3}-${numeros}`
 }
 
+/**
+ * Confirmar pago y crear cliente con acceso a onboarding
+ * POST /api/admin/solicitudes/:id/confirmar-pago
+ */
+export const confirmarPagoYCrearCliente = async (req, res) => {
+  try {
+    const { id: solicitudId } = req.params
+
+    console.log(`💳 Confirmando pago y creando cliente: ${solicitudId}`)
+
+    const db = getFirestore()
+
+    // 1. Obtener la solicitud inicial
+    const solicitudDoc = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes')
+      .doc(solicitudId)
+      .get()
+
+    if (!solicitudDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'Solicitud no encontrada'
+      })
+    }
+
+    const solicitud = solicitudDoc.data()
+
+    // 2. Verificar que no tenga ya un cliente
+    if (solicitud.clienteId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Solicitud ya procesada',
+        mensaje: 'Esta solicitud ya tiene un cliente asociado',
+        clienteId: solicitud.clienteId
+      })
+    }
+
+    // 3. Generar usuario único basado en email
+    const emailBase = solicitud.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')
+    const usuarioBase = emailBase.substring(0, 15)
+    const usuarioUnico = await generarUsuarioUnico(usuarioBase)
+
+    // 4. Generar contraseña temporal segura
+    const passwordTemporal = generarPasswordTemporal()
+    const salt = await bcrypt.genSalt(10)
+    const passwordHash = await bcrypt.hash(passwordTemporal, salt)
+
+    console.log(`🔑 Usuario generado: ${usuarioUnico}`)
+
+    // 5. Crear cliente con estado pendiente_onboarding
+    const datosCliente = {
+      nombreCompleto: solicitud.nombrePropietario,
+      email: solicitud.email,
+      telefono: solicitud.telefono,
+      nombreSalon: solicitud.nombreSalon,
+      usuario: usuarioUnico,
+      passwordHash: passwordHash,
+      solicitudId: solicitudId,
+      planSeleccionado: solicitud.plan,
+      estado: 'pendiente_onboarding', // ✅ Estado especial para onboarding
+      salonId: null,
+      estadoSuscripcion: 'pendiente'
+    }
+
+    const resultadoCliente = await crearCliente(datosCliente)
+    const clienteId = resultadoCliente.id
+
+    console.log(`✅ Cliente creado con ID: ${clienteId} (estado: pendiente_onboarding)`)
+
+    // 6. Vincular solicitud con cliente
+    await vincularClienteSolicitud(solicitudId, clienteId)
+
+    // 7. Actualizar estado de solicitud a "pago_confirmado"
+    await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes')
+      .doc(solicitudId)
+      .update({
+        estado: 'pago_confirmado',
+        fechaActualizacion: admin.firestore.FieldValue.serverTimestamp(),
+        actualizadoPor: req.user?.userId || 'admin'
+      })
+
+    console.log(`✅ Solicitud ${solicitudId} marcada como pago_confirmado`)
+
+    // 8. Enviar email con credenciales y link a onboarding (no esperar)
+    enviarEmailCredencialesOnboarding({
+      email: solicitud.email,
+      nombreCompleto: solicitud.nombrePropietario,
+      nombreSalon: solicitud.nombreSalon,
+      usuario: solicitud.email, // Usamos email como usuario
+      passwordTemporal: passwordTemporal,
+      plan: solicitud.plan
+    })
+      .then(() => console.log('✅ Email con credenciales de onboarding enviado'))
+      .catch(error => console.error('⚠️  Error al enviar email:', error.message))
+
+    // 9. Responder con éxito
+    res.status(201).json({
+      success: true,
+      mensaje: 'Cliente creado exitosamente. Email de acceso enviado.',
+      data: {
+        clienteId: clienteId,
+        usuario: solicitud.email,
+        passwordTemporal: passwordTemporal, // Solo para mostrar al admin
+        email: solicitud.email,
+        nombreSalon: solicitud.nombreSalon,
+        estado: 'pendiente_onboarding'
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error al confirmar pago y crear cliente:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error al crear cliente',
+      mensaje: 'Ocurrió un error al procesar la confirmación de pago.'
+    })
+  }
+}
+
 export default {
   getClientes,
   getClienteById,
@@ -543,5 +669,6 @@ export default {
   getEstadisticas,
   getSolicitudesAdmin,
   updateSolicitudEstado,
-  crearClienteDesdeSolicitud
+  crearClienteDesdeSolicitud,
+  confirmarPagoYCrearCliente
 }
