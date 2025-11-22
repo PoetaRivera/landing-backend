@@ -63,6 +63,7 @@ export const getClientes = async (req, res) => {
         estado: data.estado,
         estadoSuscripcion: data.estadoSuscripcion,
         salonId: data.salonId,
+        onboardingId: data.onboardingId,
         fechaCreacion: data.fechaCreacion?.toDate().toISOString(),
         fechaUltimoAcceso: data.fechaUltimoAcceso?.toDate().toISOString()
       })
@@ -602,7 +603,7 @@ export const confirmarPagoYCrearCliente = async (req, res) => {
       planSeleccionado: solicitud.plan,
       estado: 'pendiente_onboarding', // ✅ Estado especial para onboarding
       salonId: null,
-      estadoSuscripcion: 'pendiente'
+      estadoSuscripcion: 'activa'
     }
 
     const resultadoCliente = await crearCliente(datosCliente)

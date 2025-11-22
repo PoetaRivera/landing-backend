@@ -324,7 +324,7 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
     const solicitud = solicitudDoc.data()
 
     // 2. Verificar que no esté ya procesada
-    if (solicitud.salonId) {
+    if (solicitud.estado === 'completado') {
       return res.status(400).json({
         success: false,
         error: 'Solicitud ya procesada',
@@ -345,31 +345,61 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
 
     console.log(`🆔 SalonId generado: ${salonId}`)
 
-    // 4. Crear cliente con usuario y contraseña
+    // 4. Crear o Actualizar cliente
     const emailBase = solicitud.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')
     const usuarioBase = emailBase.substring(0, 15)
-    const usuarioUnico = await generarUsuarioUnico(usuarioBase)
-    const passwordTemporal = generarPasswordTemporal()
-    const passwordHash = await bcrypt.hash(passwordTemporal, 10)
 
-    const datosCliente = {
-      nombreCompleto: solicitud.nombrePropietario,
-      email: solicitud.email,
-      telefono: solicitud.telefono,
-      nombreSalon: solicitud.nombreSalon,
-      usuario: usuarioUnico,
-      passwordHash: passwordHash,
-      solicitudId: solicitudId,
-      planSeleccionado: solicitud.plan,
-      salonId: salonId,
-      estado: 'activo',
-      estadoSuscripcion: 'pendiente'
+    let clienteId
+    let usuarioFinal
+    let passwordTemporal
+    let esNuevoCliente = false
+
+    // Verificar si ya existe el cliente
+    const { buscarClientePorEmail } = await import('../config/firebase.js')
+    const clienteExistente = await buscarClientePorEmail(solicitud.email)
+
+    if (clienteExistente) {
+      console.log(`✅ Cliente ya existe: ${clienteExistente.id}. Actualizando...`)
+      clienteId = clienteExistente.id
+      usuarioFinal = clienteExistente.usuario
+      // No cambiamos password si ya existe
+
+      // Actualizar datos del cliente existente
+      await db.collection('landing-page').doc('data').collection('clientes').doc(clienteId).update({
+        nombreSalon: solicitud.nombreSalon,
+        salonId: salonId,
+        planSeleccionado: solicitud.plan,
+        solicitudId: solicitudId,
+        estado: 'activo',
+        estadoSuscripcion: 'activa', // Asumimos activa si estamos creando el salón
+        fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
+      })
+    } else {
+      // Crear nuevo cliente
+      const usuarioUnico = await generarUsuarioUnico(usuarioBase)
+      passwordTemporal = generarPasswordTemporal()
+      const passwordHash = await bcrypt.hash(passwordTemporal, 10)
+
+      const datosCliente = {
+        nombreCompleto: solicitud.nombrePropietario,
+        email: solicitud.email,
+        telefono: solicitud.telefono,
+        nombreSalon: solicitud.nombreSalon,
+        usuario: usuarioUnico,
+        passwordHash: passwordHash,
+        solicitudId: solicitudId,
+        planSeleccionado: solicitud.plan,
+        salonId: salonId,
+        estado: 'activo',
+        estadoSuscripcion: 'activa'
+      }
+
+      const resultadoCliente = await crearCliente(datosCliente)
+      clienteId = resultadoCliente.id
+      usuarioFinal = usuarioUnico
+      esNuevoCliente = true
+      console.log(`✅ Cliente creado: ${clienteId}`)
     }
-
-    const resultadoCliente = await crearCliente(datosCliente)
-    const clienteId = resultadoCliente.id
-
-    console.log(`✅ Cliente creado: ${clienteId}`)
 
     // 5. Crear estructura COMPLETA del salón en el proyecto principal
     console.log(`🏗️  Creando salón completo en el sistema principal...`)
@@ -575,10 +605,68 @@ export const rechazarSolicitudCompleta = async (req, res) => {
   }
 }
 
+/**
+ * Actualizar estado de una solicitud completa
+ * PATCH /api/admin/solicitudes-completas/:id/estado
+ */
+export const actualizarEstadoSolicitudCompleta = async (req, res) => {
+  try {
+    const { id: solicitudId } = req.params
+    const { estado, notas } = req.body
+
+    console.log(`🔄 Actualizando estado de solicitud completa ${solicitudId} a: ${estado}`)
+
+    const db = getFirestore()
+
+    // 1. Verificar que la solicitud existe
+    const solicitudRef = db
+      .collection('landing-page')
+      .doc('data')
+      .collection('solicitudes_completas')
+      .doc(solicitudId)
+
+    const solicitudDoc = await solicitudRef.get()
+
+    if (!solicitudDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'Solicitud no encontrada'
+      })
+    }
+
+    // 2. Actualizar estado
+    await solicitudRef.update({
+      estado: estado,
+      notas: notas || solicitudDoc.data().notas || '',
+      fechaActualizacion: admin.firestore.FieldValue.serverTimestamp(),
+      actualizadoPor: req.user?.userId || 'admin'
+    })
+
+    console.log(`✅ Estado actualizado correctamente: ${estado}`)
+
+    res.status(200).json({
+      success: true,
+      mensaje: 'Estado actualizado correctamente',
+      data: {
+        solicitudId,
+        estado
+      }
+    })
+  } catch (error) {
+    console.error('❌ Error al actualizar estado de solicitud:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error al actualizar estado',
+      mensaje: 'Ocurrió un error al actualizar el estado de la solicitud'
+    })
+  }
+}
+
 export default {
   crearSolicitudCompleta,
   getSolicitudesCompletas,
   getSolicitudCompletaById,
   crearSalonDesdeSolicitudCompleta,
-  rechazarSolicitudCompleta
+  rechazarSolicitudCompleta,
+  actualizarEstadoSolicitudCompleta
 }

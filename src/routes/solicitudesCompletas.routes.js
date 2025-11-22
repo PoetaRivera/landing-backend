@@ -8,7 +8,8 @@ import {
   getSolicitudesCompletas,
   getSolicitudCompletaById,
   crearSalonDesdeSolicitudCompleta,
-  rechazarSolicitudCompleta
+  rechazarSolicitudCompleta,
+  actualizarEstadoSolicitudCompleta
 } from '../controllers/solicitudesCompletas.controller.js'
 import { authenticateToken } from '../middlewares/auth.middleware.js'
 import rateLimit from 'express-rate-limit'
@@ -49,6 +50,9 @@ router.get('/:id', authenticateToken, getSolicitudCompletaById)
 
 // Crear salón completo desde solicitud
 router.post('/:id/crear-salon', authenticateToken, crearSalonDesdeSolicitudCompleta)
+
+// Actualizar estado de solicitud completa
+router.patch('/:id/estado', authenticateToken, actualizarEstadoSolicitudCompleta)
 
 // Rechazar solicitud y eliminar recursos de Cloudinary
 router.patch('/:id/rechazar', authenticateToken, rechazarSolicitudCompleta)
