@@ -273,6 +273,7 @@ export const getProfile = async (req, res) => {
       planSeleccionado: clienteData.planSeleccionado,
       suscripcionId: clienteData.suscripcionId,
       estadoSuscripcion: clienteData.estadoSuscripcion,
+      onboardingData: clienteData.onboardingData,
       fechaCreacion: clienteData.fechaCreacion,
       fechaUltimoAcceso: clienteData.fechaUltimoAcceso
     }
@@ -583,6 +584,55 @@ export const resetPassword = async (req, res) => {
   }
 }
 
+/**
+ * Guardar progreso del onboarding
+ * PUT /api/clientes/onboarding-progress
+ *
+ * Body:
+ * {
+ *   "onboardingData": { ... }
+ * }
+ */
+export const saveOnboardingProgress = async (req, res) => {
+  try {
+    const { onboardingData } = req.body
+    const clienteId = req.cliente.clienteId
+
+    if (!onboardingData) {
+      return res.status(400).json({
+        success: false,
+        error: 'Datos faltantes',
+        mensaje: 'No se enviaron datos para guardar.'
+      })
+    }
+
+    console.log(`💾 Guardando progreso de onboarding para: ${clienteId}`)
+
+    const db = getFirestore()
+    await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('clientes')
+      .doc(clienteId)
+      .update({
+        onboardingData: onboardingData,
+        fechaUltimaActualizacionOnboarding: admin.firestore.FieldValue.serverTimestamp()
+      })
+
+    res.status(200).json({
+      success: true,
+      mensaje: 'Progreso guardado exitosamente'
+    })
+  } catch (error) {
+    console.error('❌ Error al guardar progreso:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Error en el servidor',
+      mensaje: 'No se pudo guardar el progreso.'
+    })
+  }
+}
+
 export default {
   login,
   logout,
@@ -590,5 +640,6 @@ export default {
   getProfile,
   changePassword,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  saveOnboardingProgress
 }

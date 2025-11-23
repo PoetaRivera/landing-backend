@@ -4,7 +4,7 @@
  */
 
 import express from 'express'
-import { login, logout, verifyToken, getProfile, changePassword, forgotPassword, resetPassword } from '../controllers/clienteAuth.controller.js'
+import { login, logout, verifyToken, getProfile, changePassword, forgotPassword, resetPassword, saveOnboardingProgress } from '../controllers/clienteAuth.controller.js'
 import { authenticateCliente } from '../middlewares/clienteAuth.middleware.js'
 import { loginLimiter, passwordResetLimiter } from '../middlewares/rateLimiter.js'
 
@@ -137,5 +137,11 @@ router.post('/forgot-password', passwordResetLimiter, forgotPassword)
  * }
  */
 router.post('/reset-password', passwordResetLimiter, resetPassword)
+
+/**
+ * PUT /api/clientes/onboarding-progress
+ * Guardar progreso del onboarding
+ */
+router.put('/onboarding-progress', authenticateCliente, saveOnboardingProgress)
 
 export default router
