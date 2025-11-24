@@ -44,9 +44,9 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // 🔒 SEGURIDAD: Solo permitir requests sin origin en desarrollo
-    // Esto es para Postman, Thunder Client, etc. durante desarrollo
-    if (!origin && process.env.NODE_ENV === 'development') {
+    // 🔒 SEGURIDAD: Solo permitir requests sin origin en desarrollo y tests
+    // Esto es para Postman, Thunder Client, etc. durante desarrollo y para Supertest
+    if (!origin && (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test')) {
       return callback(null, true)
     }
 
@@ -54,7 +54,6 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
-      console.warn(`⚠️  CORS blocked origin: ${origin}`)
       callback(new Error('Not allowed by CORS'))
     }
   },
@@ -141,9 +140,10 @@ app.use((err, req, res, next) => {
   })
 })
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`
+// Iniciar servidor solo si no estamos en modo test
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`
 ╔═══════════════════════════════════════════════════════╗
 ║                                                       ║
 ║   🚀 Servidor Landing MultiSalon Iniciado            ║
@@ -155,7 +155,8 @@ app.listen(PORT, () => {
 ║   ⏰ Hora: ${new Date().toLocaleString('es-SV')}          ║
 ║                                                       ║
 ╚═══════════════════════════════════════════════════════╝
-  `)
-})
+    `)
+  })
+}
 
 export default app

@@ -25,6 +25,52 @@ process.env.STRIPE_PRICE_ID_BASICO = 'price_test_placeholder'
 // Firebase (se mockeará)
 process.env.GOOGLE_APPLICATION_CREDENTIALS = './firebase-credentials-test.json'
 
+// Mock de Firebase Admin
+vi.mock('firebase-admin', () => {
+  const firestoreMock = {
+    collection: vi.fn().mockReturnThis(),
+    doc: vi.fn().mockReturnThis(),
+    get: vi.fn(),
+    add: vi.fn(),
+    update: vi.fn(),
+    set: vi.fn(),
+    where: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    startAfter: vi.fn().mockReturnThis(),
+    batch: vi.fn().mockReturnValue({
+      set: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      commit: vi.fn()
+    })
+  }
+
+  return {
+    default: {
+      apps: [],
+      initializeApp: vi.fn(),
+      credential: {
+        cert: vi.fn()
+      },
+      firestore: vi.fn(() => firestoreMock)
+    }
+  }
+})
+
+// Mock de Firestore FieldValue
+vi.mock('firebase-admin/firestore', () => {
+  return {
+    FieldValue: {
+      serverTimestamp: vi.fn().mockReturnValue('TIMESTAMP'),
+      increment: vi.fn()
+    },
+    Timestamp: {
+      fromDate: vi.fn(date => date)
+    }
+  }
+})
+
 // Suprimir logs en tests (opcional)
 if (process.env.SILENT_TESTS === 'true') {
   global.console = {

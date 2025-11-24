@@ -19,7 +19,7 @@ export const initializeFirebase = () => {
   try {
     // Si ya está inicializado, retornar
     if (admin.apps.length > 0) {
-      console.log('✅ Firebase ya está inicializado')
+
       db = admin.firestore()
       return db
     }
@@ -44,8 +44,8 @@ export const initializeFirebase = () => {
 
     db = admin.firestore()
 
-    console.log('✅ Firebase Admin SDK inicializado correctamente')
-    console.log(`📁 Proyecto: ${serviceAccount.project_id}`)
+
+
 
     return db
   } catch (error) {
@@ -86,7 +86,7 @@ export const guardarSolicitudSuscripcion = async (datos) => {
       .collection('solicitudes')
       .add(solicitud)
 
-    console.log(`✅ Solicitud guardada con ID: ${docRef.id}`)
+
 
     return {
       success: true,
@@ -200,7 +200,7 @@ export const actualizarEstadoSolicitud = async (id, nuevoEstado, notas = '') => 
         fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
       })
 
-    console.log(`✅ Solicitud ${id} actualizada a estado: ${nuevoEstado}`)
+
 
     return {
       success: true,
@@ -230,7 +230,7 @@ export const vincularClienteSolicitud = async (solicitudId, clienteId) => {
         fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
       })
 
-    console.log(`✅ Solicitud ${solicitudId} vinculada con cliente ${clienteId}`)
+
 
     return {
       success: true,
@@ -347,6 +347,53 @@ export const generarUsuarioUnico = async (usuarioBase) => {
 }
 
 /**
+ * Genera un salonId único verificando que no exista en la base de datos
+ * Si el salonId base existe, agrega un número incremental
+ *
+ * @param {string} salonIdBase - SalonId base generado
+ * @returns {string} - SalonId único
+ */
+export const generarSalonIdUnico = async (salonIdBase) => {
+  try {
+    const db = getFirestore()
+    let salonIdFinal = salonIdBase
+    let contador = 2
+
+    // Verificar si el salonId existe en clientes
+    const verificarExistencia = async (salonId) => {
+      const snapshot = await db
+        .collection('landing-page')
+        .doc('data')
+        .collection('clientes')
+        .where('salonId', '==', salonId)
+        .limit(1)
+        .get()
+
+      return !snapshot.empty
+    }
+
+    let existe = await verificarExistencia(salonIdFinal)
+
+    // Si existe, agregar número hasta encontrar uno disponible
+    while (existe) {
+      salonIdFinal = `${salonIdBase}-${contador}`
+      existe = await verificarExistencia(salonIdFinal)
+      contador++
+
+      // Prevenir loop infinito
+      if (contador > 100) {
+        throw new Error('No se pudo generar un salonId único')
+      }
+    }
+
+    return salonIdFinal
+  } catch (error) {
+    console.error('❌ Error al generar salonId único:', error)
+    throw error
+  }
+}
+
+/**
  * Crea un nuevo cliente en Firestore
  *
  * @param {object} datosCliente - Datos del cliente
@@ -406,7 +453,7 @@ export const crearCliente = async (datosCliente) => {
       .collection('clientes')
       .add(cliente)
 
-    console.log(`✅ Cliente creado con ID: ${docRef.id}`)
+
 
     return {
       id: docRef.id,
@@ -449,7 +496,7 @@ export const guardarTokenReset = async (clienteId, token) => {
         fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
       })
 
-    console.log(`✅ Token de reset guardado para cliente: ${clienteId}`)
+
 
     return {
       success: true,
@@ -493,7 +540,7 @@ export const buscarClientePorTokenReset = async (token) => {
     const fechaExpiracion = cliente.fechaTokenResetPassword?.toDate()
 
     if (!fechaExpiracion || ahora > fechaExpiracion) {
-      console.log('⚠️  Token de reset expirado')
+
       return null
     }
 
@@ -526,7 +573,7 @@ export const resetearPassword = async (clienteId, passwordHash) => {
         fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
       })
 
-    console.log(`✅ Contraseña reseteada para cliente: ${clienteId}`)
+
 
     return {
       success: true,

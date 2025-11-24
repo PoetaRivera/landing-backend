@@ -16,7 +16,7 @@ export const generarSalonId = async (req, res) => {
   try {
     const salonId = generateSalonId()
 
-    console.log(`✨ SalonId generado: ${salonId}`)
+
 
     res.status(200).json({
       success: true,
@@ -98,7 +98,7 @@ export const guardarRecurso = async (req, res) => {
         })
       }
 
-      console.log(`✅ Recurso actualizado: ${salonId}/${tipo}`)
+
     } else {
       // Crear nuevo documento
       const newData = {
@@ -116,7 +116,7 @@ export const guardarRecurso = async (req, res) => {
 
       await docRef.set(newData)
 
-      console.log(`✅ Recurso creado: ${salonId}/${tipo}`)
+
     }
 
     res.status(200).json({
@@ -193,7 +193,7 @@ export const eliminarRecursos = async (req, res) => {
       })
     }
 
-    console.log(`🗑️  Eliminando recursos de ${salonId}...`)
+
 
     // 1. Eliminar de Cloudinary
     try {
@@ -209,7 +209,7 @@ export const eliminarRecursos = async (req, res) => {
           await cloudinary.api.delete_folder(`${salonId}/${folder}`)
         } catch (err) {
           // Ignorar si la carpeta no existe
-          console.log(`⚠️  Carpeta no existe: ${salonId}/${folder}`)
+
         }
       }
 
@@ -217,10 +217,10 @@ export const eliminarRecursos = async (req, res) => {
       try {
         await cloudinary.api.delete_folder(salonId)
       } catch (err) {
-        console.log(`⚠️  Carpeta raíz no existe: ${salonId}`)
+
       }
 
-      console.log(`✅ Recursos eliminados de Cloudinary: ${salonId}`)
+
     } catch (cloudinaryError) {
       console.error('⚠️  Error eliminando de Cloudinary:', cloudinaryError.message)
       // Continuar con Firestore aunque falle Cloudinary
@@ -238,7 +238,7 @@ export const eliminarRecursos = async (req, res) => {
         fechaEliminacion: admin.firestore.FieldValue.serverTimestamp()
       })
 
-    console.log(`✅ Estado actualizado en Firestore: ${salonId}`)
+
 
     res.status(200).json({
       success: true,

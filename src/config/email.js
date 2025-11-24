@@ -81,9 +81,9 @@ export const enviarEmailNuevaSolicitud = async (datosSolicitud) => {
 
               <div class="info-row">
                 <span class="label">Fecha:</span> ${new Date().toLocaleString('es-SV', {
-                  dateStyle: 'full',
-                  timeStyle: 'short'
-                })}
+        dateStyle: 'full',
+        timeStyle: 'short'
+      })}
               </div>
             </div>
 
@@ -98,7 +98,7 @@ export const enviarEmailNuevaSolicitud = async (datosSolicitud) => {
     }
 
     const info = await transporter.sendMail(mailOptions)
-    console.log('✅ Email enviado al admin:', info.messageId)
+
 
     return { success: true, messageId: info.messageId }
   } catch (error) {
@@ -191,7 +191,7 @@ export const enviarEmailConfirmacionCliente = async (datosSolicitud) => {
     }
 
     const info = await transporter.sendMail(mailOptions)
-    console.log('✅ Email de confirmación enviado al cliente:', info.messageId)
+
 
     return { success: true, messageId: info.messageId }
   } catch (error) {
@@ -331,7 +331,7 @@ export const enviarEmailCredencialesCliente = async (datos) => {
     }
 
     const info = await transporter.sendMail(mailOptions)
-    console.log('✅ Email con credenciales enviado:', info.messageId)
+
 
     return { success: true, messageId: info.messageId }
   } catch (error) {
@@ -426,7 +426,7 @@ export const enviarEmailRecuperacionPassword = async (datos) => {
     }
 
     const info = await transporter.sendMail(mailOptions)
-    console.log('✅ Email de recuperación enviado:', info.messageId)
+
 
     return { success: true, messageId: info.messageId }
   } catch (error) {
@@ -442,7 +442,7 @@ export const enviarEmailCredencialesOnboarding = async (datos) => {
   try {
     const transporter = crearTransporter()
 
-    const { email, nombreCompleto, nombreSalon, usuario, passwordTemporal, plan } = datos
+    const { email, nombreCompleto, nombreSalon, salonId, usuario, passwordTemporal, plan } = datos
 
     const mailOptions = {
       from: `"MultiSalon" <${process.env.EMAIL_USER}>`,
@@ -497,10 +497,15 @@ export const enviarEmailCredencialesOnboarding = async (datos) => {
                   <span class="label">📋 Plan Seleccionado:</span>
                   <div class="value">${plan}</div>
                 </div>
+
+                <div class="credential-row">
+                  <span class="label">🌐 Dominio de tu Salón:</span>
+                  <div class="value" style="color: #2563eb; font-weight: bold;">${salonId}.misalons.com</div>
+                </div>
               </div>
 
               <div class="alert">
-                <strong>📝 Importante:</strong> Estas credenciales te permitirán acceder al formulario de configuración. Una vez completado, recibirás acceso al sistema completo de MultiSalon.
+                <strong>📝 Importante:</strong> Estas credenciales te permitirán acceder al formulario de configuración. Una vez completado, recibirás acceso al sistema completo de MultiSalon en <strong>${salonId}.misalons.com</strong>.
               </div>
 
               <div style="text-align: center;">
@@ -523,7 +528,7 @@ export const enviarEmailCredencialesOnboarding = async (datos) => {
                   </ul>
                 </li>
                 <li><strong>Envía el formulario</strong> para revisión</li>
-                <li><strong>Recibe acceso al sistema</strong> (24-48 horas)</li>
+                <li><strong>Recibe acceso al sistema</strong> en <strong style="color: #2563eb;">${salonId}.misalons.com</strong> (24-48 horas)</li>
               </ol>
 
               <div style="background: #fef3c7; border-radius: 8px; padding: 20px; margin-top: 25px; border-left: 4px solid #f59e0b;">
@@ -554,7 +559,7 @@ export const enviarEmailCredencialesOnboarding = async (datos) => {
     }
 
     const info = await transporter.sendMail(mailOptions)
-    console.log('✅ Email de credenciales onboarding enviado:', info.messageId)
+
 
     return { success: true, messageId: info.messageId }
   } catch (error) {

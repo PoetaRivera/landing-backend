@@ -39,7 +39,7 @@ export const createCheckout = async (req, res) => {
       })
     }
 
-    console.log(`💳 Creando checkout session para solicitud: ${solicitudId}, plan: ${plan}`)
+
 
     // Verificar que la solicitud existe
     const db = getFirestore()
@@ -75,7 +75,7 @@ export const createCheckout = async (req, res) => {
       cancelUrl
     })
 
-    console.log(`✅ Checkout session creada: ${session.id}`)
+
 
     // Guardar sessionId en la solicitud
     await db
@@ -122,7 +122,7 @@ export const verifyCheckoutSession = async (req, res) => {
       })
     }
 
-    console.log(`🔍 Verificando checkout session: ${sessionId}`)
+
 
     // Obtener sesión de Stripe
     const session = await getCheckoutSession(sessionId)
@@ -169,7 +169,7 @@ export const handleWebhook = async (req, res) => {
     // Construir evento verificado
     const event = constructWebhookEvent(req.body, signature)
 
-    console.log(`📨 Webhook recibido: ${event.type}`)
+
 
     // Manejar diferentes tipos de eventos
     switch (event.type) {
@@ -198,7 +198,7 @@ export const handleWebhook = async (req, res) => {
         break
 
       default:
-        console.log(`ℹ️  Evento no manejado: ${event.type}`)
+
     }
 
     // Responder a Stripe
@@ -223,7 +223,7 @@ export const handleWebhook = async (req, res) => {
  */
 async function handleCheckoutSessionCompleted(session) {
   try {
-    console.log(`✅ Checkout completado: ${session.id}`)
+
 
     // 🔒 VALIDACIÓN: Verificar estructura del session object
     if (!session || typeof session !== 'object') {
@@ -270,14 +270,12 @@ async function handleCheckoutSessionCompleted(session) {
 
     // 🔒 IDEMPOTENCIA: Verificar si ya fue procesado
     if (datosSolicitud.estado === 'procesado') {
-      console.log(`⚠️  Webhook ya procesado anteriormente para solicitud: ${solicitudId}`)
-      console.log(`   Cliente ID existente: ${datosSolicitud.clienteId}`)
-      return // Salir sin error - webhook duplicado
+
     }
 
     // 🔒 IDEMPOTENCIA: Verificar por sessionId (por si cambió el estado manualmente)
     if (datosSolicitud.stripeSessionId === session.id) {
-      console.log(`⚠️  Session ID ya registrado: ${session.id}`)
+
       return
     }
 
@@ -292,7 +290,7 @@ async function handleCheckoutSessionCompleted(session) {
     const usuarioBase = credenciales.usuario
     const usuarioUnico = await generarUsuarioUnico(usuarioBase)
 
-    console.log(`🔑 Usuario generado para solicitud ${solicitudId}: ${usuarioUnico}`)
+
 
     // Hashear la contraseña temporal
     const passwordHash = await bcrypt.default.hash(credenciales.passwordTemporal, 10)
@@ -312,7 +310,7 @@ async function handleCheckoutSessionCompleted(session) {
     const resultadoCliente = await crearCliente(datosCliente)
     const clienteId = resultadoCliente.id
 
-    console.log(`✅ Cliente creado con ID: ${clienteId}`)
+
 
     // Actualizar solicitud con datos de Stripe y clienteId
     await db
@@ -360,7 +358,7 @@ async function handleCheckoutSessionCompleted(session) {
         )
       ])
 
-      console.log(`✅ Emails enviados exitosamente para solicitud ${solicitudId}`)
+
 
       // Marcar emails como enviados
       await db
@@ -395,7 +393,7 @@ async function handleCheckoutSessionCompleted(session) {
       // NO lanzar error - el cliente ya fue creado exitosamente
     }
 
-    console.log(`✅ Solicitud ${solicitudId} completamente procesada`)
+
   } catch (error) {
     console.error('❌ Error al manejar checkout.session.completed:', error)
   }
@@ -405,7 +403,7 @@ async function handleCheckoutSessionCompleted(session) {
  * Maneja el evento customer.subscription.created
  */
 async function handleSubscriptionCreated(subscription) {
-  console.log(`📋 Suscripción creada: ${subscription.id}`)
+
   // Lógica adicional si es necesaria
 }
 
@@ -413,7 +411,7 @@ async function handleSubscriptionCreated(subscription) {
  * Maneja el evento customer.subscription.updated
  */
 async function handleSubscriptionUpdated(subscription) {
-  console.log(`🔄 Suscripción actualizada: ${subscription.id}`)
+
 
   const db = getFirestore()
 
@@ -444,7 +442,7 @@ async function handleSubscriptionUpdated(subscription) {
       fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
     })
 
-    console.log(`✅ Cliente actualizado - estado: ${estadoSuscripcion}`)
+
   }
 }
 
@@ -452,7 +450,7 @@ async function handleSubscriptionUpdated(subscription) {
  * Maneja el evento customer.subscription.deleted
  */
 async function handleSubscriptionDeleted(subscription) {
-  console.log(`🗑️  Suscripción eliminada: ${subscription.id}`)
+
 
   const db = getFirestore()
 
@@ -474,7 +472,7 @@ async function handleSubscriptionDeleted(subscription) {
       fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
     })
 
-    console.log(`✅ Cliente suspendido por cancelación de suscripción`)
+
   }
 }
 
@@ -482,7 +480,7 @@ async function handleSubscriptionDeleted(subscription) {
  * Maneja el evento invoice.payment_succeeded
  */
 async function handleInvoicePaymentSucceeded(invoice) {
-  console.log(`💰 Pago exitoso - Invoice: ${invoice.id}`)
+
   // Lógica para registrar pagos exitosos
 }
 
@@ -490,7 +488,7 @@ async function handleInvoicePaymentSucceeded(invoice) {
  * Maneja el evento invoice.payment_failed
  */
 async function handleInvoicePaymentFailed(invoice) {
-  console.log(`⚠️  Pago fallido - Invoice: ${invoice.id}`)
+
   // Lógica para manejar pagos fallidos (notificar al cliente, etc.)
 }
 

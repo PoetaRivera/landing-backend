@@ -27,26 +27,22 @@ export const crearSolicitud = async (req, res) => {
   try {
     const datosSolicitud = req.body
 
-    console.log('📝 Nueva solicitud de suscripción:', {
-      salon: datosSolicitud.nombreSalon,
-      email: datosSolicitud.email,
-      plan: datosSolicitud.plan
-    })
+
 
     // PASO 1: Guardar solicitud en Firestore
     const resultadoSolicitud = await guardarSolicitudSuscripcion(datosSolicitud)
     const solicitudId = resultadoSolicitud.id
 
-    console.log(`✅ Solicitud guardada con ID: ${solicitudId}`)
+
 
     // PASO 2: Enviar email de notificación al admin (no esperar)
     enviarEmailNuevaSolicitud(datosSolicitud)
-      .then(() => console.log('✅ Email admin enviado'))
+
       .catch(error => console.error('⚠️  Error al enviar email admin:', error.message))
 
     // PASO 3: Enviar email de confirmación al cliente (no esperar)
     enviarEmailConfirmacionCliente(datosSolicitud)
-      .then(() => console.log('✅ Email confirmación cliente enviado'))
+
       .catch(error => console.error('⚠️  Error al enviar email cliente:', error.message))
 
     // PASO 4: Responder con éxito (sin redirección a Stripe)

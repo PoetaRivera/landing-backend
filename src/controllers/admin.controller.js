@@ -9,7 +9,8 @@ import bcrypt from 'bcryptjs'
 import {
   crearCliente,
   vincularClienteSolicitud,
-  generarUsuarioUnico
+  generarUsuarioUnico,
+  generarSalonIdUnico
 } from '../config/firebase.js'
 import {
   enviarEmailCredencialesCliente,
@@ -159,7 +160,7 @@ export const updateClienteEstado = async (req, res) => {
         fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
       })
 
-    console.log(`✅ Estado de cliente ${id} actualizado a: ${estado}`)
+
 
     res.status(200).json({
       success: true,
@@ -287,7 +288,7 @@ export const getSolicitudesAdmin = async (req, res) => {
   try {
     const { estado, plan, limite = 50, offset = 0 } = req.query
 
-    console.log('📋 Obteniendo solicitudes con filtros:', { estado, plan, limite, offset })
+
 
     const db = getFirestore()
     let query = db
@@ -314,7 +315,7 @@ export const getSolicitudesAdmin = async (req, res) => {
 
     const snapshot = await query.get()
 
-    console.log(`✅ Solicitudes encontradas: ${snapshot.size}`)
+
 
     const solicitudes = []
     snapshot.forEach(doc => {
@@ -372,7 +373,7 @@ export const updateSolicitudEstado = async (req, res) => {
       })
     }
 
-    console.log(`🔄 Actualizando solicitud ${id} a estado: ${estado}`)
+
 
     const db = getFirestore()
     await db
@@ -387,7 +388,7 @@ export const updateSolicitudEstado = async (req, res) => {
         actualizadoPor: req.user.userId
       })
 
-    console.log(`✅ Solicitud ${id} actualizada exitosamente`)
+
 
     res.status(200).json({
       success: true,
@@ -411,7 +412,7 @@ export const crearClienteDesdeSolicitud = async (req, res) => {
   try {
     const { id: solicitudId } = req.params
 
-    console.log(`👤 Creando cliente desde solicitud: ${solicitudId}`)
+
 
     const db = getFirestore()
 
@@ -452,7 +453,7 @@ export const crearClienteDesdeSolicitud = async (req, res) => {
     const salt = await bcrypt.genSalt(10)
     const passwordHash = await bcrypt.hash(passwordTemporal, salt)
 
-    console.log(`🔑 Usuario generado: ${usuarioUnico}`)
+
 
     // 5. Crear cliente
     const datosCliente = {
@@ -469,7 +470,7 @@ export const crearClienteDesdeSolicitud = async (req, res) => {
     const resultadoCliente = await crearCliente(datosCliente)
     const clienteId = resultadoCliente.id
 
-    console.log(`✅ Cliente creado con ID: ${clienteId}`)
+
 
     // 6. Vincular solicitud con cliente
     await vincularClienteSolicitud(solicitudId, clienteId)
@@ -486,7 +487,7 @@ export const crearClienteDesdeSolicitud = async (req, res) => {
         actualizadoPor: req.user.userId
       })
 
-    console.log(`✅ Solicitud ${solicitudId} marcada como procesada`)
+
 
     // 8. Enviar email con credenciales (no esperar)
     enviarEmailCredencialesCliente({
@@ -497,7 +498,7 @@ export const crearClienteDesdeSolicitud = async (req, res) => {
       passwordTemporal: passwordTemporal,
       plan: solicitud.plan
     })
-      .then(() => console.log('✅ Email con credenciales enviado'))
+
       .catch(error => console.error('⚠️  Error al enviar email:', error.message))
 
     // 9. Responder con éxito
@@ -548,7 +549,7 @@ export const confirmarPagoYCrearCliente = async (req, res) => {
   try {
     const { id: solicitudId } = req.params
 
-    console.log(`💳 Confirmando pago y creando cliente: ${solicitudId}`)
+
 
     const db = getFirestore()
 
@@ -589,7 +590,18 @@ export const confirmarPagoYCrearCliente = async (req, res) => {
     const salt = await bcrypt.genSalt(10)
     const passwordHash = await bcrypt.hash(passwordTemporal, salt)
 
-    console.log(`🔑 Usuario generado: ${usuarioUnico}`)
+
+
+    // 4.5. Generar salonId basado en nombreSalon
+    const salonIdBase = solicitud.nombreSalon
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+      .replace(/[^a-z0-9]+/g, '-') // Reemplazar caracteres especiales con guión
+      .replace(/^-+|-+$/g, '') // Quitar guiones al inicio/final
+      .substring(0, 30) // Máximo 30 caracteres
+
+    const salonId = await generarSalonIdUnico(salonIdBase)
+
 
     // 5. Crear cliente con estado pendiente_onboarding
     const datosCliente = {
@@ -602,14 +614,14 @@ export const confirmarPagoYCrearCliente = async (req, res) => {
       solicitudId: solicitudId,
       planSeleccionado: solicitud.plan,
       estado: 'pendiente_onboarding', // ✅ Estado especial para onboarding
-      salonId: null,
+      salonId: salonId, // ✅ Ahora incluye el salonId pre-generado
       estadoSuscripcion: 'activa'
     }
 
     const resultadoCliente = await crearCliente(datosCliente)
     const clienteId = resultadoCliente.id
 
-    console.log(`✅ Cliente creado con ID: ${clienteId} (estado: pendiente_onboarding)`)
+
 
     // 6. Vincular solicitud con cliente
     await vincularClienteSolicitud(solicitudId, clienteId)
@@ -626,18 +638,19 @@ export const confirmarPagoYCrearCliente = async (req, res) => {
         actualizadoPor: req.user?.userId || 'admin'
       })
 
-    console.log(`✅ Solicitud ${solicitudId} marcada como pago_confirmado`)
+
 
     // 8. Enviar email con credenciales y link a onboarding (no esperar)
     enviarEmailCredencialesOnboarding({
       email: solicitud.email,
       nombreCompleto: solicitud.nombrePropietario,
       nombreSalon: solicitud.nombreSalon,
+      salonId: salonId, // ✅ Incluir dominio del salón
       usuario: solicitud.email, // Usamos email como usuario
       passwordTemporal: passwordTemporal,
       plan: solicitud.plan
     })
-      .then(() => console.log('✅ Email con credenciales de onboarding enviado'))
+
       .catch(error => console.error('⚠️  Error al enviar email:', error.message))
 
     // 9. Responder con éxito

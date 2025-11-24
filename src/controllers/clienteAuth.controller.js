@@ -42,7 +42,7 @@ export const login = async (req, res) => {
       })
     }
 
-    console.log(`🔑 Intento de login de cliente: ${identifier}`)
+
 
     // Buscar cliente por email o usuario
     let cliente = null
@@ -112,7 +112,7 @@ export const login = async (req, res) => {
       })
       .catch(err => console.error('⚠️  Error al actualizar último acceso:', err))
 
-    console.log(`✅ Login exitoso de cliente: ${cliente.usuario} (${cliente.email})`)
+
 
     // Configurar cookie HTTP-only
     const cookieOptions = {
@@ -232,8 +232,8 @@ export const getProfile = async (req, res) => {
     // req.cliente ya viene del middleware authenticateCliente
     const clienteId = req.cliente.clienteId
 
-    console.log(`📋 Intentando obtener perfil para clienteId: ${clienteId}`)
-    console.log(`📋 req.cliente completo:`, req.cliente)
+
+
 
     // Obtener datos completos del cliente desde Firestore
     const db = getFirestore()
@@ -244,7 +244,7 @@ export const getProfile = async (req, res) => {
       .doc(clienteId)
       .get()
 
-    console.log(`📋 clienteDoc.exists: ${clienteDoc.exists}`)
+
 
     if (!clienteDoc.exists) {
       console.error(`❌ Cliente no encontrado en Firestore con ID: ${clienteId}`)
@@ -256,7 +256,7 @@ export const getProfile = async (req, res) => {
     }
 
     const clienteData = clienteDoc.data()
-    console.log(`📋 Estado del cliente: ${clienteData.estado}`)
+
 
     // Preparar datos de respuesta (sin passwordHash)
     const perfil = {
@@ -278,7 +278,7 @@ export const getProfile = async (req, res) => {
       fechaUltimoAcceso: clienteData.fechaUltimoAcceso
     }
 
-    console.log(`📋 Perfil obtenido: ${clienteData.usuario}`)
+
 
     res.status(200).json({
       success: true,
@@ -322,7 +322,7 @@ export const logout = async (req, res) => {
       sameSite: 'strict'
     })
 
-    console.log('✅ Logout exitoso de cliente')
+
 
     res.status(200).json({
       success: true,
@@ -417,7 +417,7 @@ export const changePassword = async (req, res) => {
         fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
       })
 
-    console.log(`🔐 Contraseña cambiada exitosamente: ${clienteData.usuario}`)
+
 
     res.status(200).json({
       success: true,
@@ -455,7 +455,7 @@ export const forgotPassword = async (req, res) => {
       })
     }
 
-    console.log(`🔑 Solicitud de recuperación de contraseña para: ${email}`)
+
 
     // Importar funciones necesarias
     const { buscarClientePorEmail, guardarTokenReset } = await import('../config/firebase.js')
@@ -468,7 +468,7 @@ export const forgotPassword = async (req, res) => {
     // Por seguridad, siempre responder con éxito aunque el email no exista
     // Esto previene que atacantes descubran emails válidos
     if (!cliente) {
-      console.log(`⚠️  Email no encontrado: ${email} (respondiendo con éxito por seguridad)`)
+
       return res.status(200).json({
         success: true,
         mensaje: 'Si el email existe en nuestro sistema, recibirás un link de recuperación.'
@@ -495,7 +495,7 @@ export const forgotPassword = async (req, res) => {
     // Enviar email con link de recuperación
     await enviarEmailRecuperacionPassword(cliente.email, cliente.nombreCompleto, resetToken)
 
-    console.log(`✅ Email de recuperación enviado a: ${email}`)
+
 
     res.status(200).json({
       success: true,
@@ -534,7 +534,7 @@ export const resetPassword = async (req, res) => {
       })
     }
 
-    console.log(`🔐 Intento de reset de contraseña con token`)
+
 
     // Importar funciones necesarias
     const { buscarClientePorTokenReset, resetearPassword } = await import('../config/firebase.js')
@@ -568,7 +568,7 @@ export const resetPassword = async (req, res) => {
     // Actualizar contraseña y limpiar token
     await resetearPassword(cliente.id, passwordHash)
 
-    console.log(`✅ Contraseña reseteada exitosamente para: ${cliente.usuario}`)
+
 
     res.status(200).json({
       success: true,
@@ -606,7 +606,7 @@ export const saveOnboardingProgress = async (req, res) => {
       })
     }
 
-    console.log(`💾 Guardando progreso de onboarding para: ${clienteId}`)
+
 
     const db = getFirestore()
     await db

@@ -15,9 +15,7 @@ import bcrypt from 'bcryptjs'
  */
 export async function crearSalonCompleto(solicitud, salonId) {
   try {
-    console.log(`\n${"=".repeat(70)}`)
-    console.log(`🏗️  CREANDO SALÓN COMPLETO: ${salonId}`)
-    console.log(`${"=".repeat(70)}\n`)
+
 
     const db = getFirestore()
     const batch = db.batch()
@@ -25,7 +23,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
     // =====================================================================
     // 0. OBTENER IMÁGENES DESDE cloudinary-pending (ya en ubicación final)
     // =====================================================================
-    console.log('🖼️  Obteniendo URLs de imágenes desde cloudinary-pending...')
+
 
     let imagenesRecursos = {
       logo: '',
@@ -54,14 +52,9 @@ export async function crearSalonCompleto(solicitud, salonId) {
             servicios: data.servicios || [],
             estilistas: data.estilistas || []
           }
-          console.log('✅ URLs obtenidas desde cloudinary-pending')
-          console.log(`   - Logo: ${imagenesRecursos.logo ? 'Sí' : 'No'}`)
-          console.log(`   - Carrusel: ${imagenesRecursos.carrusel.length} imágenes`)
-          console.log(`   - Productos: ${imagenesRecursos.productos.length} imágenes`)
-          console.log(`   - Servicios: ${imagenesRecursos.servicios.length} imágenes`)
-          console.log(`   - Estilistas: ${imagenesRecursos.estilistas.length} imágenes`)
+
         } else {
-          console.log('⚠️  No se encontró documento en cloudinary-pending, usando fallback')
+
         }
       } catch (error) {
         console.error('⚠️  Error leyendo cloudinary-pending:', error.message)
@@ -79,7 +72,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
     // =====================================================================
     // 1. CREAR METADATA EN salones_map/{salonId}
     // =====================================================================
-    console.log('📋 Creando metadata en salones_map...')
+
 
     const metadata = {
       nombreComercial: solicitud.nombreEmpresa || solicitud.nombreSalon,
@@ -121,12 +114,12 @@ export async function crearSalonCompleto(solicitud, salonId) {
     const salonesMapRef = db.collection('salones_map').doc(salonId)
     batch.set(salonesMapRef, metadata)
 
-    console.log('✅ Metadata preparada')
+
 
     // =====================================================================
     // 2. CREAR DOCUMENTO PRINCIPAL en salones/{salonId}
     // =====================================================================
-    console.log('📁 Creando documento principal...')
+
 
     const salonRef = db.collection('salones').doc(salonId)
     batch.set(salonRef, {
@@ -134,12 +127,12 @@ export async function crearSalonCompleto(solicitud, salonId) {
       creadoEn: new Date().toISOString()
     })
 
-    console.log('✅ Documento principal preparado')
+
 
     // =====================================================================
     // 3. CREAR CONFIGURACIÓN GENERAL
     // =====================================================================
-    console.log('⚙️  Creando configuración general...')
+
 
     const configuracionRef = salonRef.collection('configuracion').doc('general')
     batch.set(configuracionRef, {
@@ -167,12 +160,12 @@ export async function crearSalonCompleto(solicitud, salonId) {
       }
     })
 
-    console.log('✅ Configuración preparada')
+
 
     // =====================================================================
     // 4. CREAR DURACIONES
     // =====================================================================
-    console.log('⏱️  Creando duraciones predefinidas...')
+
 
     const duraciones = [
       { id: 'duracion_1', duracion: '00:30' },
@@ -188,12 +181,12 @@ export async function crearSalonCompleto(solicitud, salonId) {
       batch.set(duracionRef, { duracion: dur.duracion })
     })
 
-    console.log('✅ Duraciones preparadas')
+
 
     // =====================================================================
     // 5. CREAR TÍTULOS
     // =====================================================================
-    console.log('📝 Creando títulos...')
+
 
     const titulosRef = salonRef.collection('titulos').doc('titulo1')
     batch.set(titulosRef, {
@@ -205,12 +198,12 @@ export async function crearSalonCompleto(solicitud, salonId) {
       tituloinfo: 'Nuestra información'
     })
 
-    console.log('✅ Títulos preparados')
+
 
     // =====================================================================
     // 6. CREAR FOOTER
     // =====================================================================
-    console.log('🦶 Creando footer...')
+
 
     const horarios = solicitud.configuracion?.horarios || solicitud.horarios || {}
 
@@ -252,12 +245,12 @@ export async function crearSalonCompleto(solicitud, salonId) {
       ubicacion: solicitud.configuracion?.ubicacionMaps || solicitud.ubicacionMaps || ''
     })
 
-    console.log('✅ Footer preparado')
+
 
     // =====================================================================
     // 7. CREAR IMÁGENES CARRUSEL
     // =====================================================================
-    console.log('🖼️  Creando referencias de imágenes...')
+
 
     const imagenesRef = salonRef.collection('imagenes').doc('urlcarrusel')
     batch.set(imagenesRef, {
@@ -268,19 +261,19 @@ export async function crearSalonCompleto(solicitud, salonId) {
       imagen4: imagenesRecursos.carrusel[3] || ''
     })
 
-    console.log('✅ Imágenes preparadas')
+
 
     // =====================================================================
     // 8. EJECUTAR BATCH INICIAL
     // =====================================================================
-    console.log('💾 Ejecutando batch inicial...')
+
     await batch.commit()
-    console.log('✅ Batch inicial completado')
+
 
     // =====================================================================
     // 9. CREAR USUARIO ADMINISTRADOR
     // =====================================================================
-    console.log('👤 Creando usuario administrador...')
+
 
     const passwordAdmin = 'admin123'
     const passwordHash = await bcrypt.hash(passwordAdmin, 10)
@@ -309,12 +302,12 @@ export async function crearSalonCompleto(solicitud, salonId) {
     }
 
     await salonRef.collection('usuarios').add(adminData)
-    console.log('✅ Usuario admin creado')
+
 
     // =====================================================================
     // 10. CREAR SERVICIOS
     // =====================================================================
-    console.log('✂️  Creando servicios...')
+
 
     const serviciosFormulario = solicitud.servicios || []
 
@@ -342,7 +335,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
           url: urlServicio
         })
       }
-      console.log(`✅ ${serviciosFormulario.length} servicios creados`)
+
     } else {
       // Servicio demo si no hay servicios
       await salonRef.collection('servicios').add({
@@ -362,13 +355,13 @@ export async function crearSalonCompleto(solicitud, salonId) {
         precioOferta: 0,
         url: ''
       })
-      console.log('✅ 1 servicio demo creado')
+
     }
 
     // =====================================================================
     // 11. CREAR PRODUCTOS
     // =====================================================================
-    console.log('🛍️  Creando productos...')
+
 
     const productosFormulario = solicitud.productos || []
 
@@ -400,7 +393,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
           url: urlProducto
         })
       }
-      console.log(`✅ ${productosFormulario.length} productos creados`)
+
     } else {
       // Producto demo si no hay productos
       await salonRef.collection('productos').add({
@@ -424,13 +417,13 @@ export async function crearSalonCompleto(solicitud, salonId) {
         tags: [],
         url: ''
       })
-      console.log('✅ 1 producto demo creado')
+
     }
 
     // =====================================================================
     // 12. CREAR ESTILISTAS
     // =====================================================================
-    console.log('💇 Creando estilistas...')
+
 
     const estilistasCreados = []
     const estilistasFormulario = solicitud.estilistas || []
@@ -456,7 +449,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
         const docRef = await salonRef.collection('estilistas').add(estilistaData)
         estilistasCreados.push({ id: docRef.id, ...estilistaData })
       }
-      console.log(`✅ ${estilistasFormulario.length} estilistas creados desde formulario`)
+
     }
 
     // Completar hasta 6 estilistas si hay menos
@@ -478,30 +471,15 @@ export async function crearSalonCompleto(solicitud, salonId) {
         const docRef = await salonRef.collection('estilistas').add(estilistaData)
         estilistasCreados.push({ id: docRef.id, ...estilistaData })
       }
-      console.log(`✅ ${estilistasRestantes} estilistas demo creados para completar 6`)
+
     }
 
-    console.log(`✅ Total: ${estilistasCreados.length} estilistas creados`)
+
 
     // =====================================================================
     // RESUMEN
     // =====================================================================
-    console.log(`\n${"=".repeat(70)}`)
-    console.log('✅ SALÓN CREADO EXITOSAMENTE')
-    console.log(`${"=".repeat(70)}`)
-    console.log(`\n📊 Resumen:`)
-    console.log(`   - SalonID: ${salonId}`)
-    console.log(`   - Nombre: ${solicitud.nombreSalon}`)
-    console.log(`   - Admin: ${solicitud.nombrePropietario}`)
-    console.log(`   - Email: ${solicitud.email}`)
-    console.log(`   - Servicios: ${serviciosFormulario.length || 1}`)
-    console.log(`   - Productos: ${productosFormulario.length || 1}`)
-    console.log(`   - Estilistas: 6`)
-    console.log(`\n⚠️  IMPORTANTE:`)
-    console.log(`   - Las RESERVAS (slots) se generarán automáticamente por el cron job`)
-    console.log(`   - La DISPONIBILIDAD se generará al crear las reservas`)
-    console.log(`   - Las prereservas empiezan vacías`)
-    console.log(`${"=".repeat(70)}\n`)
+
 
     return {
       success: true,

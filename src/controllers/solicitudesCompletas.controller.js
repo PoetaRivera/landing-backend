@@ -8,7 +8,6 @@ import admin from 'firebase-admin'
 import bcrypt from 'bcryptjs'
 import {
   crearCliente,
-  vincularClienteSolicitud,
   generarUsuarioUnico
 } from '../config/firebase.js'
 import { enviarEmailCredencialesCliente } from '../config/email.js'
@@ -22,8 +21,8 @@ export const crearSolicitudCompleta = async (req, res) => {
   try {
     const datosFormulario = req.body
 
-    console.log('📝 Creando solicitud completa...')
-    console.log(`   SalonId: ${datosFormulario.salonId || 'No especificado'}`)
+
+
 
     const db = getFirestore()
 
@@ -113,7 +112,7 @@ export const crearSolicitudCompleta = async (req, res) => {
       .collection('solicitudes_completas')
       .add(solicitudCompleta)
 
-    console.log(`✅ Solicitud completa creada: ${docRef.id}`)
+
 
     // Si hay clienteId, actualizar estado del cliente a 'onboarding_completado'
     if (datosFormulario.clienteId) {
@@ -129,7 +128,7 @@ export const crearSolicitudCompleta = async (req, res) => {
             fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
           })
 
-        console.log(`✅ Cliente actualizado a 'onboarding_completado': ${datosFormulario.clienteId}`)
+
       } catch (error) {
         console.error('⚠️  Error actualizando estado del cliente:', error)
         // No fallar si esto falla
@@ -150,7 +149,7 @@ export const crearSolicitudCompleta = async (req, res) => {
             fechaActualizacion: admin.firestore.FieldValue.serverTimestamp()
           })
 
-        console.log(`✅ SolicitudId vinculado en cloudinary-pending: ${datosFormulario.salonId}`)
+
       } catch (error) {
         console.error('⚠️  Error vinculando solicitudId en cloudinary-pending:', error)
         // No fallar si esto falla
@@ -185,7 +184,7 @@ export const getSolicitudesCompletas = async (req, res) => {
   try {
     const { estado, limite = 50, offset = 0 } = req.query
 
-    console.log('📋 Obteniendo solicitudes completas con filtros:', { estado, limite, offset })
+
 
     const db = getFirestore()
     let query = db
@@ -209,7 +208,7 @@ export const getSolicitudesCompletas = async (req, res) => {
 
     const snapshot = await query.get()
 
-    console.log(`✅ Solicitudes completas encontradas: ${snapshot.size}`)
+
 
     const solicitudes = []
     snapshot.forEach(doc => {
@@ -256,7 +255,7 @@ export const getSolicitudCompletaById = async (req, res) => {
   try {
     const { id } = req.params
 
-    console.log(`📋 Obteniendo solicitud completa: ${id}`)
+
 
     const db = getFirestore()
     const solicitudDoc = await db
@@ -302,7 +301,7 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
   try {
     const { id: solicitudId } = req.params
 
-    console.log(`🏢 Creando salón completo desde solicitud: ${solicitudId}`)
+
 
     const db = getFirestore()
 
@@ -343,7 +342,7 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
 
     const salonId = await generarSalonIdUnico(salonIdBase)
 
-    console.log(`🆔 SalonId generado: ${salonId}`)
+
 
     // 4. Crear o Actualizar cliente
     const emailBase = solicitud.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -359,7 +358,7 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
     const clienteExistente = await buscarClientePorEmail(solicitud.email)
 
     if (clienteExistente) {
-      console.log(`✅ Cliente ya existe: ${clienteExistente.id}. Actualizando...`)
+
       clienteId = clienteExistente.id
       usuarioFinal = clienteExistente.usuario
       // No cambiamos password si ya existe
@@ -398,17 +397,17 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
       clienteId = resultadoCliente.id
       usuarioFinal = usuarioUnico
       esNuevoCliente = true
-      console.log(`✅ Cliente creado: ${clienteId}`)
+
     }
 
     // 5. Crear estructura COMPLETA del salón en el proyecto principal
-    console.log(`🏗️  Creando salón completo en el sistema principal...`)
+
 
     const resultadoSalon = await crearSalonCompleto(solicitud, salonId)
 
-    console.log(`✅ Salón creado exitosamente: ${salonId}`)
-    console.log(`   - Estilistas creados: ${resultadoSalon.estilistas}`)
-    console.log(`   - Password admin: ${resultadoSalon.adminPassword}`)
+
+
+
 
     // 6. Actualizar solicitud
     await db
@@ -424,10 +423,7 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
         actualizadoPor: req.user?.userId || 'admin'
       })
 
-    // 7. Vincular cliente con solicitud
-    await vincularClienteSolicitud(solicitudId, clienteId)
-
-    // 8. Enviar email con credenciales del admin del salón (async)
+    // 7. Enviar email con credenciales del admin del salón (async)
     enviarEmailCredencialesCliente({
       email: solicitud.email,
       nombreCompleto: solicitud.nombrePropietario,
@@ -436,7 +432,7 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
       passwordTemporal: resultadoSalon.adminPassword,
       plan: solicitud.plan
     })
-      .then(() => console.log('✅ Email con credenciales enviado'))
+
       .catch(error => console.error('⚠️  Error al enviar email:', error.message))
 
     // 9. Responder con éxito
@@ -521,7 +517,7 @@ export const rechazarSolicitudCompleta = async (req, res) => {
     const { id: solicitudId } = req.params
     const { razon } = req.body
 
-    console.log(`❌ Rechazando solicitud completa: ${solicitudId}`)
+
 
     const db = getFirestore()
 
@@ -557,7 +553,7 @@ export const rechazarSolicitudCompleta = async (req, res) => {
         actualizadoPor: req.user?.userId || 'admin'
       })
 
-    console.log(`✅ Solicitud marcada como rechazada: ${solicitudId}`)
+
 
     // 3. Si hay salonId, eliminar recursos de Cloudinary
     if (salonId) {
@@ -571,7 +567,7 @@ export const rechazarSolicitudCompleta = async (req, res) => {
           status: () => mockRes,
           json: (data) => {
             if (data.success) {
-              console.log(`✅ Recursos de Cloudinary eliminados: ${salonId}`)
+
             } else {
               console.error(`⚠️  Error eliminando recursos: ${data.error}`)
             }
@@ -614,7 +610,7 @@ export const actualizarEstadoSolicitudCompleta = async (req, res) => {
     const { id: solicitudId } = req.params
     const { estado, notas } = req.body
 
-    console.log(`🔄 Actualizando estado de solicitud completa ${solicitudId} a: ${estado}`)
+
 
     const db = getFirestore()
 
@@ -642,7 +638,7 @@ export const actualizarEstadoSolicitudCompleta = async (req, res) => {
       actualizadoPor: req.user?.userId || 'admin'
     })
 
-    console.log(`✅ Estado actualizado correctamente: ${estado}`)
+
 
     res.status(200).json({
       success: true,

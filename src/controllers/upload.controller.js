@@ -38,12 +38,7 @@ export const uploadImage = async (req, res) => {
       })
     }
 
-    console.log(`📤 Subiendo imagen a Cloudinary...`)
-    console.log(`   Salón: ${salonId}`)
-    console.log(`   Archivo: ${file.name}`)
-    console.log(`   Tamaño: ${(file.size / 1024).toFixed(2)} KB`)
-    console.log(`   Tipo: ${file.mimetype}`)
-    console.log(`   Carpeta: ${salonId}/${folder}`)
+
 
     // Validar tipo de archivo (solo imágenes)
     if (!file.mimetype.startsWith('image/')) {
@@ -94,9 +89,7 @@ export const uploadImage = async (req, res) => {
       resource_type: 'auto'
     })
 
-    console.log(`✅ Imagen subida exitosamente`)
-    console.log(`   URL: ${uploadResult.secure_url}`)
-    console.log(`   Public ID: ${uploadResult.public_id}`)
+
 
     // Guardar URL en cloudinary-pending
     try {
@@ -140,7 +133,7 @@ export const uploadImage = async (req, res) => {
         await docRef.set(newData)
       }
 
-      console.log(`✅ URL guardada en cloudinary-pending: ${salonId}`)
+
     } catch (firestoreError) {
       console.error('⚠️  Error guardando en cloudinary-pending:', firestoreError)
       // Continuar aunque falle el guardado en Firestore
@@ -200,9 +193,7 @@ export const uploadMultipleImages = async (req, res) => {
     // Convertir a array si es un solo archivo
     const filesArray = Array.isArray(req.files.files) ? req.files.files : [req.files.files]
 
-    console.log(`📤 Subiendo ${filesArray.length} imágenes a Cloudinary...`)
-    console.log(`   Salón: ${salonId}`)
-    console.log(`   Carpeta: ${salonId}/${folder}`)
+
 
     // Validar límite de archivos (máximo 4 para carrusel)
     if (filesArray.length > 4) {
@@ -267,7 +258,7 @@ export const uploadMultipleImages = async (req, res) => {
           size: uploadResult.bytes
         })
 
-        console.log(`✅ Imagen ${i + 1}/${filesArray.length} subida`)
+
       } catch (error) {
         console.error(`❌ Error subiendo imagen ${i + 1}:`, error.message)
         errors.push({
@@ -277,9 +268,7 @@ export const uploadMultipleImages = async (req, res) => {
       }
     }
 
-    console.log(
-      `✅ Proceso completado: ${uploadedImages.length} exitosas, ${errors.length} fallidas`
-    )
+
 
     // Guardar URLs en cloudinary-pending si hubo uploads exitosos
     if (uploadedImages.length > 0) {
@@ -321,7 +310,7 @@ export const uploadMultipleImages = async (req, res) => {
           await docRef.set(newData)
         }
 
-        console.log(`✅ URLs guardadas en cloudinary-pending: ${salonId}/${folder}`)
+
       } catch (firestoreError) {
         console.error('⚠️  Error guardando en cloudinary-pending:', firestoreError)
         // Continuar aunque falle el guardado en Firestore

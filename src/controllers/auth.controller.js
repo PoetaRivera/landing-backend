@@ -26,7 +26,7 @@ export const login = async (req, res) => {
       })
     }
 
-    console.log('🔐 Intento de login:', email)
+
 
     // Buscar usuario en Firestore
     const db = getFirestore()
@@ -39,7 +39,7 @@ export const login = async (req, res) => {
       .get()
 
     if (usersSnapshot.empty) {
-      console.log('⚠️  Usuario no encontrado:', email)
+
       return res.status(401).json({
         success: false,
         error: 'Credenciales inválidas',
@@ -52,7 +52,7 @@ export const login = async (req, res) => {
 
     // Verificar que el usuario esté activo
     if (!userData.activo) {
-      console.log('⚠️  Usuario inactivo:', email)
+
       return res.status(403).json({
         success: false,
         error: 'Usuario inactivo',
@@ -64,7 +64,7 @@ export const login = async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, userData.passwordHash)
 
     if (!passwordMatch) {
-      console.log('⚠️  Contraseña incorrecta para:', email)
+
       return res.status(401).json({
         success: false,
         error: 'Credenciales inválidas',
@@ -106,7 +106,7 @@ export const login = async (req, res) => {
         ultimaIP: req.ip || req.connection.remoteAddress
       })
 
-    console.log('✅ Login exitoso:', email)
+
 
     // Configurar cookie HTTP-only
     const cookieOptions = {
@@ -155,7 +155,7 @@ export const logout = async (req, res) => {
       sameSite: 'strict'
     })
 
-    console.log('✅ Logout exitoso de administrador')
+
 
     res.status(200).json({
       success: true,
@@ -302,7 +302,7 @@ export const changePassword = async (req, res) => {
         passwordCambiado: new Date().toISOString()
       })
 
-    console.log('✅ Contraseña cambiada para:', userData.email)
+
 
     res.status(200).json({
       success: true,
@@ -333,7 +333,7 @@ export const forgotPassword = async (req, res) => {
       })
     }
 
-    console.log('🔑 Solicitud de recuperación de contraseña:', email)
+
 
     const db = getFirestore()
     const usersSnapshot = await db
@@ -346,7 +346,7 @@ export const forgotPassword = async (req, res) => {
 
     // Siempre responder con éxito para evitar enumerar usuarios válidos
     if (usersSnapshot.empty) {
-      console.log('⚠️  Usuario no encontrado:', email)
+
       return res.status(200).json({
         success: true,
         mensaje: 'Si el email existe, recibirás instrucciones para recuperar tu contraseña'
@@ -358,7 +358,7 @@ export const forgotPassword = async (req, res) => {
 
     // Verificar que el usuario esté activo
     if (!userData.activo) {
-      console.log('⚠️  Usuario inactivo:', email)
+
       return res.status(200).json({
         success: true,
         mensaje: 'Si el email existe, recibirás instrucciones para recuperar tu contraseña'
@@ -395,7 +395,7 @@ export const forgotPassword = async (req, res) => {
         expiraEn: '1 hora'
       })
 
-      console.log('✅ Email de recuperación enviado a:', email)
+
     } catch (emailError) {
       console.error('❌ Error al enviar email:', emailError)
       // Limpiar token si el email falla
@@ -455,7 +455,7 @@ export const resetPassword = async (req, res) => {
       })
     }
 
-    console.log('🔑 Intento de resetear contraseña con token')
+
 
     // Hash del token recibido para comparar
     const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex')
@@ -470,7 +470,7 @@ export const resetPassword = async (req, res) => {
       .get()
 
     if (usersSnapshot.empty) {
-      console.log('⚠️  Token inválido o expirado')
+
       return res.status(400).json({
         success: false,
         error: 'Token inválido',
@@ -484,7 +484,7 @@ export const resetPassword = async (req, res) => {
     // Verificar expiración del token
     const tokenExpiry = new Date(userData.resetPasswordExpiry)
     if (tokenExpiry < new Date()) {
-      console.log('⚠️  Token expirado')
+
       return res.status(400).json({
         success: false,
         error: 'Token expirado',
@@ -510,7 +510,7 @@ export const resetPassword = async (req, res) => {
         passwordResetCompletado: new Date().toISOString()
       })
 
-    console.log('✅ Contraseña reseteada para:', userData.email)
+
 
     res.status(200).json({
       success: true,

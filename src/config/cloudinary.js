@@ -61,9 +61,7 @@ export const moverImagenASalon = async (tempUrl, salonId, folder, filename) => {
     // Nuevo publicId en la carpeta del salón
     const newPublicId = `${salonId}/${folder}/${filename}`
 
-    console.log(`📦 Moviendo imagen:`)
-    console.log(`   Origen: ${publicId}`)
-    console.log(`   Destino: ${newPublicId}`)
+
 
     // Intentar renombrar (mover) la imagen
     try {
@@ -72,7 +70,7 @@ export const moverImagenASalon = async (tempUrl, salonId, folder, filename) => {
         invalidate: true
       })
 
-      console.log(`✅ Imagen movida exitosamente`)
+
 
       // Retornar nueva URL
       return result.secure_url
@@ -84,11 +82,11 @@ export const moverImagenASalon = async (tempUrl, salonId, folder, filename) => {
       // Verificar si la imagen ya existe en el destino
       try {
         const resource = await cloudinary.api.resource(newPublicId)
-        console.log('✅ Imagen ya existe en destino, usando URL existente')
+
         return resource.secure_url
       } catch (checkError) {
         // Si no existe, copiar desde la URL temporal
-        console.log('📋 Copiando imagen desde URL temporal...')
+
         const uploadResult = await cloudinary.uploader.upload(tempUrl, {
           folder: `${salonId}/${folder}`,
           public_id: filename,
@@ -110,7 +108,7 @@ export const moverImagenASalon = async (tempUrl, salonId, folder, filename) => {
  * @returns {Promise<Object>} - { logo: string, carrusel: string[] }
  */
 export const moverImagenesSolicitudASalon = async (solicitud, salonId) => {
-  console.log(`\n🖼️  Moviendo imágenes de la solicitud al salón ${salonId}...`)
+
 
   const imagenesMovidas = {
     logo: '',
@@ -120,22 +118,22 @@ export const moverImagenesSolicitudASalon = async (solicitud, salonId) => {
   // 1. Mover logo
   if (solicitud.logo) {
     try {
-      console.log(`📸 Moviendo logo...`)
+
       const logoUrl = await moverImagenASalon(solicitud.logo, salonId, 'logos', 'logo')
       imagenesMovidas.logo = logoUrl
-      console.log(`✅ Logo movido: ${logoUrl}`)
+
     } catch (error) {
       console.error('❌ Error moviendo logo:', error.message)
       // Mantener URL original si falla
       imagenesMovidas.logo = solicitud.logo
     }
   } else {
-    console.log('ℹ️  No hay logo para mover')
+
   }
 
   // 2. Mover imágenes del carrusel
   if (solicitud.imagenesCarrusel && solicitud.imagenesCarrusel.length > 0) {
-    console.log(`📸 Moviendo ${solicitud.imagenesCarrusel.length} imágenes del carrusel...`)
+
 
     for (let i = 0; i < solicitud.imagenesCarrusel.length; i++) {
       const tempUrl = solicitud.imagenesCarrusel[i]
@@ -148,7 +146,7 @@ export const moverImagenesSolicitudASalon = async (solicitud, salonId) => {
           `imagen${i + 1}`
         )
         imagenesMovidas.carrusel.push(imagenUrl)
-        console.log(`✅ Imagen ${i + 1} movida: ${imagenUrl}`)
+
       } catch (error) {
         console.error(`❌ Error moviendo imagen ${i + 1}:`, error.message)
         // Mantener URL original si falla
@@ -156,12 +154,10 @@ export const moverImagenesSolicitudASalon = async (solicitud, salonId) => {
       }
     }
   } else {
-    console.log('ℹ️  No hay imágenes de carrusel para mover')
+
   }
 
-  console.log(`✅ Imágenes movidas exitosamente`)
-  console.log(`   - Logo: ${imagenesMovidas.logo ? 'Sí' : 'No'}`)
-  console.log(`   - Carrusel: ${imagenesMovidas.carrusel.length} imágenes\n`)
+
 
   return imagenesMovidas
 }
@@ -179,7 +175,7 @@ export const eliminarImagen = async (url) => {
     }
 
     await cloudinary.uploader.destroy(publicId)
-    console.log(`🗑️  Imagen eliminada: ${publicId}`)
+
     return true
   } catch (error) {
     console.error('Error eliminando imagen:', error.message)

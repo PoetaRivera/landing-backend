@@ -85,7 +85,7 @@ const VALIDATIONS = {
  * @throws {Error} Si falta alguna variable requerida o falla una validación
  */
 export function validateEnv() {
-  console.log('\n🔍 Validando variables de entorno...\n')
+
 
   const errors = []
   const warnings = []
@@ -104,7 +104,7 @@ export function validateEnv() {
           errors.push(`❌ ${varName}: ${validationError}`)
         }
       }
-      console.log(`✅ ${varName}: Configurado`)
+
     }
   })
 
@@ -114,7 +114,7 @@ export function validateEnv() {
       process.env[varName] = defaultValue.toString()
       warnings.push(`⚠️  ${varName}: No configurado, usando valor por defecto: ${defaultValue}`)
     } else {
-      console.log(`✅ ${varName}: ${process.env[varName]}`)
+
     }
   })
 
@@ -140,7 +140,7 @@ export function validateEnv() {
     const finalPath = isAbsolute ? credPath : resolve(process.cwd(), credPath)
 
     readFileSync(finalPath, 'utf8')
-    console.log('✅ GOOGLE_APPLICATION_CREDENTIALS: Archivo encontrado')
+
   } catch (error) {
     console.error(
       `❌ GOOGLE_APPLICATION_CREDENTIALS: No se pudo leer el archivo: ${error.message}`
@@ -149,7 +149,7 @@ export function validateEnv() {
     process.exit(1)
   }
 
-  console.log('\n✅ Todas las variables de entorno están correctamente configuradas\n')
+
 }
 
 /**
