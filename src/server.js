@@ -44,9 +44,8 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // 🔒 SEGURIDAD: Solo permitir requests sin origin en desarrollo y tests
-    // Esto es para Postman, Thunder Client, etc. durante desarrollo y para Supertest
-    if (!origin && (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test')) {
+    // Permitir requests sin origin (herramientas, health checks, APIs)
+    if (!origin) {
       return callback(null, true)
     }
 
@@ -54,6 +53,8 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
+      // En producción, registrar pero no bloquear health checks
+      console.warn(`⚠️ CORS: Origen no permitido: ${origin}`)
       callback(new Error('Not allowed by CORS'))
     }
   },
