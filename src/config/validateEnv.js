@@ -12,14 +12,16 @@ import { resolve } from 'path'
  */
 const REQUIRED_ENV_VARS = [
   'JWT_SECRET',
-  'GOOGLE_APPLICATION_CREDENTIALS',
   'EMAIL_USER',
   'EMAIL_PASSWORD',
-  'EMAIL_ADMIN',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'STRIPE_PRICE_ID_BASICO'
+  'EMAIL_ADMIN'
 ]
+
+/**
+ * Variables requeridas solo si existen credenciales Firebase locales
+ * En producción se usa GOOGLE_APPLICATION_CREDENTIALS_JSON
+ */
+const FIREBASE_VARS = ['GOOGLE_APPLICATION_CREDENTIALS']
 
 /**
  * Variables opcionales con valores por defecto
@@ -132,23 +134,32 @@ export function validateEnv() {
     process.exit(1)
   }
 
-  // 5. Verificar archivo de credenciales Firebase
-  try {
-    const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
-    const isAbsolute = credPath.startsWith('/') || credPath.match(/^[A-Za-z]:/)
+  // 5. Verificar Firebase credentials (archivo local O JSON en variable)
+  const hasFirebaseJSON = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+  const hasFirebaseFile = process.env.GOOGLE_APPLICATION_CREDENTIALS
 
-    const finalPath = isAbsolute ? credPath : resolve(process.cwd(), credPath)
-
-    readFileSync(finalPath, 'utf8')
-
-  } catch (error) {
-    console.error(
-      `❌ GOOGLE_APPLICATION_CREDENTIALS: No se pudo leer el archivo: ${error.message}`
-    )
-    console.error('   Verifica que la ruta sea correcta y el archivo exista\n')
+  if (!hasFirebaseJSON && !hasFirebaseFile) {
+    console.error('\n❌ ERRORES DE CONFIGURACIÓN:\n')
+    console.error('❌ Firebase credentials faltantes: Define GOOGLE_APPLICATION_CREDENTIALS_JSON (producción) o GOOGLE_APPLICATION_CREDENTIALS (desarrollo)')
+    console.error('\n📖 Revisa el archivo .env.example para ver las variables requeridas\n')
     process.exit(1)
   }
 
+  // Si hay archivo local, verificar que exista
+  if (hasFirebaseFile && !hasFirebaseJSON) {
+    try {
+      const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+      const isAbsolute = credPath.startsWith('/') || credPath.match(/^[A-Za-z]:/)
+      const finalPath = isAbsolute ? credPath : resolve(process.cwd(), credPath)
+      readFileSync(finalPath, 'utf8')
+    } catch (error) {
+      console.error(
+        `❌ GOOGLE_APPLICATION_CREDENTIALS: No se pudo leer el archivo: ${error.message}`
+      )
+      console.error('   Verifica que la ruta sea correcta y el archivo exista\n')
+      process.exit(1)
+    }
+  }
 
 }
 

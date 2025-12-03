@@ -136,9 +136,16 @@ export async function crearSalonCompleto(solicitud, salonId) {
 
     const configuracionRef = salonRef.collection('configuracion').doc('general')
     batch.set(configuracionRef, {
+      // ⚠️ Agregar campos básicos del salón
+      nombre: solicitud.nombreEmpresa || solicitud.nombreSalon,
+      telefono: solicitud.telefono || '+503 0000-0000',
+      email: solicitud.email || `contacto@${salonId}.com`,
+      direccion: solicitud.direccion || 'Dirección del salón',
+
       horariosBase: {
         apertura: '05:00',
-        cierre: '22:00'
+        cierre: '22:00',
+        intervaloSlot: 30  // ⚠️ CRÍTICO: Agregar este campo
       },
 
       branding: {
@@ -178,7 +185,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
 
     duraciones.forEach(dur => {
       const duracionRef = salonRef.collection('duracion').doc(dur.id)
-      batch.set(duracionRef, { duracion: dur.duracion })
+      batch.set(duracionRef, { tiempo: dur.duracion })  // ⚠️ Cambiar "duracion" → "tiempo"
     })
 
 
@@ -190,12 +197,12 @@ export async function crearSalonCompleto(solicitud, salonId) {
 
     const titulosRef = salonRef.collection('titulos').doc('titulo1')
     batch.set(titulosRef, {
-      existe: true,
-      titulocarrusel: `Bienvenidos a ${solicitud.nombreEmpresa || solicitud.nombreSalon}`,
-      tituloestilistas: 'Nuestro equipo',
-      tituloproductos: 'Nuestros productos',
-      tituloservicios: 'Nuestros servicios',
-      tituloinfo: 'Nuestra información'
+      // ⚠️ Remover prefijo "titulo" de los nombres
+      carrusel: `Bienvenidos a ${solicitud.nombreEmpresa || solicitud.nombreSalon}`,
+      estilistas: 'Nuestro equipo',
+      productos: 'Nuestros productos',
+      servicios: 'Nuestros servicios'
+      // Nota: "tituloinfo" no existe en backend principal, eliminar
     })
 
 
@@ -443,6 +450,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
           usuarioId: '',
           especialidad: estilista.especialidad || 'General',
           url: urlEstilista,
+          email: estilista.email || '',  // ⚠️ AGREGAR: Campo crítico para notificaciones
           creadoEn: new Date().toISOString()
         }
 
@@ -465,6 +473,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
           usuarioId: '',
           especialidad: 'General',
           url: '',
+          email: '',  // ⚠️ AGREGAR: Campo crítico para notificaciones
           creadoEn: new Date().toISOString()
         }
 

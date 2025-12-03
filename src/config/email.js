@@ -207,7 +207,7 @@ export const enviarEmailCredencialesCliente = async (datos) => {
   try {
     const transporter = crearTransporter()
 
-    const { email, nombreCompleto, nombreSalon, usuario, passwordTemporal, plan } = datos
+    const { email, nombreCompleto, nombreSalon, salonId, usuario, passwordTemporal, plan } = datos
 
     const mailOptions = {
       from: `"MultiSalon" <${process.env.EMAIL_USER}>`,
@@ -267,6 +267,11 @@ export const enviarEmailCredencialesCliente = async (datos) => {
                   <span class="label">📋 Plan:</span>
                   <div class="value">${plan}</div>
                 </div>
+
+                <div class="credential-row">
+                  <span class="label">🌐 URL de tu Salón:</span>
+                  <div class="value" style="color: #10b981; font-weight: bold; font-size: 18px;">${salonId}.misalons.com</div>
+                </div>
               </div>
 
               <div class="alert">
@@ -274,19 +279,19 @@ export const enviarEmailCredencialesCliente = async (datos) => {
               </div>
 
               <div style="text-align: center;">
-                <a href="https://app.multisalon.com/login" class="button" style="color: white;">
-                  Iniciar Sesión Ahora →
+                <a href="https://${salonId}.misalons.com" class="button" style="color: white;">
+                  Acceder a Mi Salón →
                 </a>
               </div>
 
               <h3 style="margin-top: 30px; color: #374151;">📋 Próximos Pasos:</h3>
               <ol>
-                <li><strong>Inicia sesión</strong> en el sistema con tus credenciales</li>
+                <li><strong>Accede a tu salón</strong> en <strong style="color: #10b981;">${salonId}.misalons.com</strong> con tus credenciales</li>
                 <li><strong>Cambia tu contraseña</strong> por una personalizada</li>
-                <li><strong>Completa tu perfil</strong> con los datos de tu salón</li>
-                <li><strong>Configura tu catálogo</strong> de servicios y productos</li>
-                <li><strong>Personaliza los colores</strong> de tu sistema</li>
-                <li><strong>Invita a tu equipo</strong> de estilistas</li>
+                <li><strong>Explora tu sistema</strong> - Ya tiene configurado todo lo que enviaste en el formulario</li>
+                <li><strong>Revisa tu catálogo</strong> de servicios y productos</li>
+                <li><strong>Sube imágenes</strong> de tu logo y carrusel desde el panel de administración</li>
+                <li><strong>Invita a tu equipo</strong> de estilistas y comienza a gestionar reservas</li>
               </ol>
 
               <h3 style="color: #374151;">📚 Recursos Disponibles:</h3>
@@ -442,7 +447,7 @@ export const enviarEmailCredencialesOnboarding = async (datos) => {
   try {
     const transporter = crearTransporter()
 
-    const { email, nombreCompleto, nombreSalon, salonId, usuario, passwordTemporal, plan } = datos
+    const { email, nombreCompleto, nombreSalon, usuario, passwordTemporal, plan } = datos
 
     const mailOptions = {
       from: `"MultiSalon" <${process.env.EMAIL_USER}>`,
@@ -497,15 +502,10 @@ export const enviarEmailCredencialesOnboarding = async (datos) => {
                   <span class="label">📋 Plan Seleccionado:</span>
                   <div class="value">${plan}</div>
                 </div>
-
-                <div class="credential-row">
-                  <span class="label">🌐 Dominio de tu Salón:</span>
-                  <div class="value" style="color: #2563eb; font-weight: bold;">${salonId}.misalons.com</div>
-                </div>
               </div>
 
               <div class="alert">
-                <strong>📝 Importante:</strong> Estas credenciales te permitirán acceder al formulario de configuración. Una vez completado, recibirás acceso al sistema completo de MultiSalon en <strong>${salonId}.misalons.com</strong>.
+                <strong>📝 Importante:</strong> Estas credenciales te permitirán acceder al formulario de configuración. Una vez completado, nuestro equipo montará tu salón y recibirás un email con la URL de acceso a tu sistema personalizado.
               </div>
 
               <div style="text-align: center;">
@@ -528,7 +528,7 @@ export const enviarEmailCredencialesOnboarding = async (datos) => {
                   </ul>
                 </li>
                 <li><strong>Envía el formulario</strong> para revisión</li>
-                <li><strong>Recibe acceso al sistema</strong> en <strong style="color: #2563eb;">${salonId}.misalons.com</strong> (24-48 horas)</li>
+                <li><strong>Recibe acceso a tu sistema</strong> personalizado vía email (24-48 horas)</li>
               </ol>
 
               <div style="background: #fef3c7; border-radius: 8px; padding: 20px; margin-top: 25px; border-left: 4px solid #f59e0b;">

@@ -12,7 +12,8 @@ import {
   getSolicitudesAdmin,
   updateSolicitudEstado,
   crearClienteDesdeSolicitud,
-  confirmarPagoYCrearCliente
+  confirmarPagoYCrearCliente,
+  verificarSalonId
 } from '../controllers/admin.controller.js'
 import { authenticateToken, requireAdmin } from '../middlewares/auth.middleware.js'
 import { apiLimiter } from '../middlewares/rateLimiter.js'
@@ -183,5 +184,36 @@ router.post('/solicitudes/:id/crear-cliente', crearClienteDesdeSolicitud)
  * }
  */
 router.post('/solicitudes/:id/confirmar-pago', confirmarPagoYCrearCliente)
+
+/**
+ * POST /api/admin/verificar-salon-id
+ * Verificar disponibilidad de un salonId
+ *
+ * Body:
+ * {
+ *   "salonId": "marthaBelleza"
+ * }
+ *
+ * Response cuando está disponible:
+ * {
+ *   "success": true,
+ *   "disponible": true,
+ *   "mensaje": "El salonId 'marthabelleza' está disponible",
+ *   "salonId": "marthabelleza"
+ * }
+ *
+ * Response cuando ya existe:
+ * {
+ *   "success": true,
+ *   "disponible": false,
+ *   "mensaje": "El salonId 'martha' ya está en uso",
+ *   "detalles": {
+ *     "nombreSalon": "Salón Martha",
+ *     "estado": "activo",
+ *     "fechaCreacion": "2025-01-15T10:30:00.000Z"
+ *   }
+ * }
+ */
+router.post('/verificar-salon-id', verificarSalonId)
 
 export default router

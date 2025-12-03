@@ -183,4 +183,181 @@ export const eliminarImagen = async (url) => {
   }
 }
 
+/**
+ * Convertir nombre de salón a formato válido para salonId/carpetas
+ * Formato: lowercase, sin acentos, sin espacios, sin caracteres especiales
+ * Ejemplo: "Karlas Salon's" → "karlassalons"
+ * Ejemplo: "Bella Spa Center" → "bellaspacenter"
+ * @param {string} nombreSalon - Nombre del salón
+ * @returns {string} - salonId formateado
+ */
+export const formatearNombreSalon = (nombreSalon) => {
+  if (!nombreSalon || typeof nombreSalon !== 'string') {
+    throw new Error('nombreSalon debe ser un string válido')
+  }
+
+  return nombreSalon
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
+    .replace(/[^a-z0-9]/g, '') // Eliminar caracteres especiales (espacios, apóstrofes, etc.)
+    .substring(0, 30) // Limitar longitud máxima
+}
+
+/**
+ * Mover todas las imágenes de una carpeta temporal a carpeta final
+ * @param {string} carpetaTemporal - Carpeta origen (salonId temporal)
+ * @param {string} carpetaFinal - Carpeta destino (nombre del salón)
+ * @param {Object} recursos - Objeto con URLs de recursos desde cloudinary-pending
+ * @returns {Promise<Object>} - URLs actualizadas { logo, carrusel, productos, servicios, estilistas }
+ */
+export const moverRecursosACarpetaFinal = async (carpetaTemporal, carpetaFinal, recursos) => {
+  console.log(`\n🔄 Moviendo recursos de "${carpetaTemporal}" a "${carpetaFinal}"...`)
+
+  const urlsActualizadas = {
+    logo: '',
+    carrusel: [],
+    productos: [],
+    servicios: [],
+    estilistas: []
+  }
+
+  try {
+    // 1. Mover logo
+    if (recursos.logo) {
+      try {
+        console.log(`  📸 Moviendo logo...`)
+        const publicIdOrigen = extractPublicId(recursos.logo)
+        const publicIdDestino = `${carpetaFinal}/logos/logo`
+
+        console.log(`     🔹 URL origen: ${recursos.logo}`)
+        console.log(`     🔹 publicId origen: ${publicIdOrigen}`)
+        console.log(`     🔹 publicId destino: ${publicIdDestino}`)
+        console.log(`     🔹 carpetaOrigen esperada: ${carpetaTemporal}`)
+        console.log(`     🔹 carpetaDestino esperada: ${carpetaFinal}`)
+
+        const result = await cloudinary.uploader.rename(publicIdOrigen, publicIdDestino, {
+          overwrite: true,
+          invalidate: true
+        })
+
+        urlsActualizadas.logo = result.secure_url
+        console.log(`  ✅ Logo movido exitosamente`)
+        console.log(`     ✅ Nueva URL: ${result.secure_url}`)
+        console.log(`     ✅ Nuevo publicId: ${result.public_id}`)
+        console.log(`     ⚠️  VERIFICAR: La URL debe contener "/${carpetaFinal}/" NO "/${carpetaTemporal}/"`)
+      } catch (error) {
+        console.error(`  ❌ ERROR MOVIENDO LOGO:`)
+        console.error(`     ❌ Mensaje: ${error.message}`)
+        console.error(`     ❌ Error completo:`, JSON.stringify(error, null, 2))
+        console.error(`     ❌ publicId origen intentado: ${extractPublicId(recursos.logo)}`)
+        console.error(`     ❌ publicId destino intentado: ${carpetaFinal}/logos/logo`)
+
+        // Mantener URL original si falla
+        urlsActualizadas.logo = recursos.logo
+        console.log(`     ⚠️  Manteniendo URL original: ${recursos.logo}`)
+      }
+    }
+
+    // 2. Mover carrusel
+    if (recursos.carrusel && recursos.carrusel.length > 0) {
+      console.log(`  🖼️  Moviendo ${recursos.carrusel.length} imágenes de carrusel...`)
+
+      for (let i = 0; i < recursos.carrusel.length; i++) {
+        try {
+          const publicIdOrigen = extractPublicId(recursos.carrusel[i])
+          const publicIdDestino = `${carpetaFinal}/carrusel/imagen${i + 1}`
+
+          const result = await cloudinary.uploader.rename(publicIdOrigen, publicIdDestino, {
+            overwrite: true,
+            invalidate: true
+          })
+
+          urlsActualizadas.carrusel.push(result.secure_url)
+        } catch (error) {
+          console.error(`  ❌ Error moviendo carrusel ${i + 1}:`, error.message)
+          urlsActualizadas.carrusel.push(recursos.carrusel[i])
+        }
+      }
+      console.log(`  ✅ ${urlsActualizadas.carrusel.length}/${recursos.carrusel.length} imágenes de carrusel movidas`)
+    }
+
+    // 3. Mover productos
+    if (recursos.productos && recursos.productos.length > 0) {
+      console.log(`  🛍️  Moviendo ${recursos.productos.length} imágenes de productos...`)
+
+      for (let i = 0; i < recursos.productos.length; i++) {
+        try {
+          const publicIdOrigen = extractPublicId(recursos.productos[i])
+          const publicIdDestino = `${carpetaFinal}/productos/producto${i + 1}`
+
+          const result = await cloudinary.uploader.rename(publicIdOrigen, publicIdDestino, {
+            overwrite: true,
+            invalidate: true
+          })
+
+          urlsActualizadas.productos.push(result.secure_url)
+        } catch (error) {
+          console.error(`  ❌ Error moviendo producto ${i + 1}:`, error.message)
+          urlsActualizadas.productos.push(recursos.productos[i])
+        }
+      }
+      console.log(`  ✅ ${urlsActualizadas.productos.length}/${recursos.productos.length} imágenes de productos movidas`)
+    }
+
+    // 4. Mover servicios
+    if (recursos.servicios && recursos.servicios.length > 0) {
+      console.log(`  💇 Moviendo ${recursos.servicios.length} imágenes de servicios...`)
+
+      for (let i = 0; i < recursos.servicios.length; i++) {
+        try {
+          const publicIdOrigen = extractPublicId(recursos.servicios[i])
+          const publicIdDestino = `${carpetaFinal}/servicios/servicio${i + 1}`
+
+          const result = await cloudinary.uploader.rename(publicIdOrigen, publicIdDestino, {
+            overwrite: true,
+            invalidate: true
+          })
+
+          urlsActualizadas.servicios.push(result.secure_url)
+        } catch (error) {
+          console.error(`  ❌ Error moviendo servicio ${i + 1}:`, error.message)
+          urlsActualizadas.servicios.push(recursos.servicios[i])
+        }
+      }
+      console.log(`  ✅ ${urlsActualizadas.servicios.length}/${recursos.servicios.length} imágenes de servicios movidas`)
+    }
+
+    // 5. Mover estilistas
+    if (recursos.estilistas && recursos.estilistas.length > 0) {
+      console.log(`  👨‍🦰 Moviendo ${recursos.estilistas.length} imágenes de estilistas...`)
+
+      for (let i = 0; i < recursos.estilistas.length; i++) {
+        try {
+          const publicIdOrigen = extractPublicId(recursos.estilistas[i])
+          const publicIdDestino = `${carpetaFinal}/estilistas/estilista${i + 1}`
+
+          const result = await cloudinary.uploader.rename(publicIdOrigen, publicIdDestino, {
+            overwrite: true,
+            invalidate: true
+          })
+
+          urlsActualizadas.estilistas.push(result.secure_url)
+        } catch (error) {
+          console.error(`  ❌ Error moviendo estilista ${i + 1}:`, error.message)
+          urlsActualizadas.estilistas.push(recursos.estilistas[i])
+        }
+      }
+      console.log(`  ✅ ${urlsActualizadas.estilistas.length}/${recursos.estilistas.length} imágenes de estilistas movidas`)
+    }
+
+    console.log(`✅ Recursos movidos exitosamente a carpeta "${carpetaFinal}"\n`)
+
+    return urlsActualizadas
+  } catch (error) {
+    console.error(`❌ Error moviendo recursos:`, error)
+    throw error
+  }
+}
+
 export default cloudinary

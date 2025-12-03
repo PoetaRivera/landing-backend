@@ -17,13 +17,25 @@ export const generateSalonId = () => {
 
 /**
  * Validar formato de salonId
+ * Acepta dos formatos:
+ * 1. Temporal (onboarding): salon_{timestamp}_{random} (ej: salon_1732198232_4567)
+ * 2. Final (salón creado): alfanumérico, 3-30 caracteres (ej: caroline, misalon, bellaestetic)
+ *
  * @param {string} salonId
  * @returns {boolean}
  */
 export const validateSalonId = (salonId) => {
   if (!salonId || typeof salonId !== 'string') return false
 
-  // Formato: salon_{timestamp}_{random}
-  const pattern = /^salon_\d+_\d+$/
-  return pattern.test(salonId)
+  // Formato 1: Temporal (salon_{timestamp}_{random})
+  const patternTemporal = /^salon_\d+_\d+$/
+  if (patternTemporal.test(salonId)) return true
+
+  // Formato 2: Final (alfanumérico, 3-30 caracteres, solo minúsculas y números)
+  // Permite: caroline, misalon, bellaestetic, salon123, etc.
+  // NO permite: espacios, caracteres especiales, mayúsculas
+  const patternFinal = /^[a-z0-9]{3,30}$/
+  if (patternFinal.test(salonId)) return true
+
+  return false
 }

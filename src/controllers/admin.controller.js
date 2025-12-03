@@ -226,8 +226,8 @@ export const getEstadisticas = async (req, res) => {
       },
       planes: {
         basico: clientes.filter(c => c.planSeleccionado?.includes('Básico')).length,
-        estandar: clientes.filter(c => c.planSeleccionado?.includes('Estándar')).length,
-        premium: clientes.filter(c => c.planSeleccionado?.includes('Premium')).length
+        premium: clientes.filter(c => c.planSeleccionado?.includes('Premium')).length,
+        empresarial: clientes.filter(c => c.planSeleccionado?.includes('Empresarial')).length
       },
       solicitudes: {
         total: solicitudes.length,
@@ -237,7 +237,9 @@ export const getEstadisticas = async (req, res) => {
         rechazadas: solicitudes.filter(s => s.estado === 'rechazado').length
       },
       ingresos: {
-        mensual: calcularIngresosMensuales(clientes)
+        mensual: calcularIngresosMensuales(clientes),
+        primasRecaudadas: calcularPrimasInicial(clientes),
+        totalEstimado: calcularIngresosMensuales(clientes) + calcularPrimasInicial(clientes)
       }
     }
 
@@ -261,8 +263,8 @@ export const getEstadisticas = async (req, res) => {
 function calcularIngresosMensuales(clientes) {
   const planesPrecios = {
     'Básico': 15,
-    'Estándar': 30,
-    'Premium': 50
+    'Premium': 25,
+    'Empresarial': 50
   }
 
   let total = 0
@@ -271,6 +273,33 @@ function calcularIngresosMensuales(clientes) {
       for (const [plan, precio] of Object.entries(planesPrecios)) {
         if (cliente.planSeleccionado.includes(plan)) {
           total += precio
+          break
+        }
+      }
+    }
+  })
+
+  return total
+}
+
+/**
+ * Calcular primas iniciales recaudadas
+ * Suma las primas de todos los clientes creados
+ */
+function calcularPrimasInicial(clientes) {
+  const planesPrimas = {
+    'Básico': 79,
+    'Premium': 129,
+    'Empresarial': 0 // Empresarial sin prima por ahora
+  }
+
+  let total = 0
+  clientes.forEach(cliente => {
+    // Contar clientes que tienen un plan seleccionado
+    if (cliente.planSeleccionado) {
+      for (const [plan, prima] of Object.entries(planesPrimas)) {
+        if (cliente.planSeleccionado.includes(plan)) {
+          total += prima
           break
         }
       }
@@ -489,8 +518,8 @@ export const crearClienteDesdeSolicitud = async (req, res) => {
 
 
 
-    // 8. Enviar email con credenciales (no esperar)
-    enviarEmailCredencialesCliente({
+    // 8. Enviar email con credenciales para acceder al onboarding (no esperar)
+    enviarEmailCredencialesOnboarding({
       email: solicitud.email,
       nombreCompleto: solicitud.nombrePropietario,
       nombreSalon: solicitud.nombreSalon,
@@ -676,6 +705,98 @@ export const confirmarPagoYCrearCliente = async (req, res) => {
   }
 }
 
+/**
+ * Verificar disponibilidad de salonId
+ * POST /api/admin/verificar-salon-id
+ * Body: { salonId: string }
+ */
+export const verificarSalonId = async (req, res) => {
+  try {
+    const { salonId } = req.body
+
+    if (!salonId || typeof salonId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'salonId es requerido y debe ser un string',
+        disponible: false
+      })
+    }
+
+    // Validar formato del salonId
+    const salonIdLimpio = salonId.trim().toLowerCase()
+
+    if (salonIdLimpio.length < 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'salonId debe tener al menos 3 caracteres',
+        disponible: false
+      })
+    }
+
+    if (salonIdLimpio.length > 30) {
+      return res.status(400).json({
+        success: false,
+        error: 'salonId no puede exceder 30 caracteres',
+        disponible: false
+      })
+    }
+
+    // Validar que solo contenga letras minúsculas y números
+    const formatoValido = /^[a-z0-9]+$/.test(salonIdLimpio)
+    if (!formatoValido) {
+      return res.status(400).json({
+        success: false,
+        error: 'salonId solo puede contener letras minúsculas y números (sin espacios ni caracteres especiales)',
+        disponible: false
+      })
+    }
+
+    console.log(`🔍 Verificando disponibilidad de salonId: "${salonIdLimpio}"`)
+
+    const db = getFirestore()
+
+    // Verificar en la colección salonesId
+    const salonDoc = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('salonesId')
+      .doc(salonIdLimpio)
+      .get()
+
+    if (salonDoc.exists) {
+      const salonData = salonDoc.data()
+      console.log(`❌ salonId "${salonIdLimpio}" ya está en uso`)
+
+      return res.status(200).json({
+        success: true,
+        disponible: false,
+        mensaje: `El salonId "${salonIdLimpio}" ya está en uso`,
+        detalles: {
+          nombreSalon: salonData.nombreSalon || 'Desconocido',
+          estado: salonData.estado || 'activo',
+          fechaCreacion: salonData.fechaCreacion?.toDate().toISOString() || null
+        }
+      })
+    }
+
+    console.log(`✅ salonId "${salonIdLimpio}" está disponible`)
+
+    return res.status(200).json({
+      success: true,
+      disponible: true,
+      mensaje: `El salonId "${salonIdLimpio}" está disponible`,
+      salonId: salonIdLimpio
+    })
+  } catch (error) {
+    console.error('❌ Error verificando salonId:', error)
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Error al verificar disponibilidad',
+      disponible: false
+    })
+  }
+}
+
 export default {
   getClientes,
   getClienteById,
@@ -684,5 +805,6 @@ export default {
   getSolicitudesAdmin,
   updateSolicitudEstado,
   crearClienteDesdeSolicitud,
-  confirmarPagoYCrearCliente
+  confirmarPagoYCrearCliente,
+  verificarSalonId
 }

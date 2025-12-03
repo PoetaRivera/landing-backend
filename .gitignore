@@ -9,3 +9,7 @@ firebase.json
 *-credentials.json
 *.pem
 *.key
+
+# Variables de entorno para deployment (contiene secretos)
+KOYEB_ENV.txt
+*_ENV.txt

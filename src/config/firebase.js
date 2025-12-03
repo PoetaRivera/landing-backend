@@ -19,23 +19,32 @@ export const initializeFirebase = () => {
   try {
     // Si ya está inicializado, retornar
     if (admin.apps.length > 0) {
-
       db = admin.firestore()
       return db
     }
 
-    // Leer credenciales desde el archivo JSON
-    // Si la ruta es absoluta (comienza con C:\ o /), usarla directamente
-    // Si es relativa, resolverla desde el directorio de trabajo (donde se ejecuta npm run dev)
-    const envPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
-    const isAbsolutePath = envPath.match(/^[a-zA-Z]:/) || envPath.startsWith('/')
+    let serviceAccount
 
-    // Resolver desde process.cwd() que es donde se ejecuta el comando
-    const credentialsPath = isAbsolutePath
-      ? envPath
-      : resolve(process.cwd(), envPath)
+    // 🔧 PRODUCCIÓN: Soportar credenciales desde variable de entorno JSON
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+      console.log('📦 Usando Firebase credentials desde variable de entorno JSON')
+      serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON)
+    }
+    // 💻 DESARROLLO: Leer credenciales desde archivo local
+    else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      console.log('📂 Usando Firebase credentials desde archivo local')
+      const envPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+      const isAbsolutePath = envPath.match(/^[a-zA-Z]:/) || envPath.startsWith('/')
 
-    const serviceAccount = JSON.parse(readFileSync(credentialsPath, 'utf8'))
+      // Resolver desde process.cwd() que es donde se ejecuta el comando
+      const credentialsPath = isAbsolutePath
+        ? envPath
+        : resolve(process.cwd(), envPath)
+
+      serviceAccount = JSON.parse(readFileSync(credentialsPath, 'utf8'))
+    } else {
+      throw new Error('❌ No se encontraron credenciales de Firebase. Define GOOGLE_APPLICATION_CREDENTIALS o GOOGLE_APPLICATION_CREDENTIALS_JSON')
+    }
 
     // Inicializar Firebase Admin
     admin.initializeApp({

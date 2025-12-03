@@ -282,7 +282,7 @@ async function handleCheckoutSessionCompleted(session) {
     // Importar utilidades necesarias
     const { generarCredencialesCliente } = await import('../utils/clienteUtils.js')
     const { generarUsuarioUnico, crearCliente } = await import('../config/firebase.js')
-    const { enviarEmailConfirmacionCliente, enviarEmailCredencialesCliente } = await import('../config/email.js')
+    const { enviarEmailConfirmacionCliente, enviarEmailCredencialesOnboarding } = await import('../config/email.js')
     const bcrypt = await import('bcryptjs')
 
     // Generar credenciales únicas para el cliente
@@ -345,17 +345,14 @@ async function handleCheckoutSessionCompleted(session) {
     try {
       await Promise.all([
         enviarEmailConfirmacionCliente(datosSolicitud),
-        enviarEmailCredencialesCliente(
-          {
-            nombreCompleto: datosSolicitud.nombrePropietario,
-            email: datosSolicitud.email,
-            nombreSalon: datosSolicitud.nombreSalon
-          },
-          {
-            usuario: usuarioUnico,
-            passwordTemporal: credenciales.passwordTemporal
-          }
-        )
+        enviarEmailCredencialesOnboarding({
+          nombreCompleto: datosSolicitud.nombrePropietario,
+          email: datosSolicitud.email,
+          nombreSalon: datosSolicitud.nombreSalon,
+          usuario: usuarioUnico,
+          passwordTemporal: credenciales.passwordTemporal,
+          plan: datosSolicitud.plan
+        })
       ])
 
 

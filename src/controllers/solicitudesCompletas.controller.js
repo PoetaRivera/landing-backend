@@ -300,8 +300,16 @@ export const getSolicitudCompletaById = async (req, res) => {
 export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
   try {
     const { id: solicitudId } = req.params
+    const { salonId: salonIdVerificado } = req.body // ⚠️ NUEVO: Admin debe enviar salonId verificado
 
-
+    // Validar que se envió el salonId
+    if (!salonIdVerificado || typeof salonIdVerificado !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'salonId es requerido',
+        mensaje: 'Debe verificar y enviar el salonId antes de crear el salón'
+      })
+    }
 
     const db = getFirestore()
 
@@ -332,17 +340,39 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
       })
     }
 
-    // 3. Generar salonId único
-    const salonIdBase = solicitud.nombreSalon
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
-      .replace(/[^a-z0-9]/g, '')
-      .substring(0, 20)
+    // 3. Verificar NUEVAMENTE que el salonId esté disponible (doble seguridad)
+    console.log(`\n🔍 Verificando disponibilidad final de salonId: "${salonIdVerificado}"`)
+    const salonIdDoc = await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('salonesId')
+      .doc(salonIdVerificado)
+      .get()
 
-    const salonId = await generarSalonIdUnico(salonIdBase)
+    if (salonIdDoc.exists) {
+      return res.status(400).json({
+        success: false,
+        error: 'salonId no disponible',
+        mensaje: `El salonId "${salonIdVerificado}" ya está en uso. Por favor verifica nuevamente.`
+      })
+    }
 
+    console.log(`✅ salonId "${salonIdVerificado}" verificado y disponible`)
 
+    // El salonId a usar
+    const salonId = salonIdVerificado
+
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`📋 CREACIÓN DE SALÓN - INICIO`)
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`🏪 Nombre del salón: "${solicitud.nombreSalon}"`)
+    console.log(`📦 salonId temporal (cloudinary): "${solicitud.salonId}"`)
+    console.log(`✨ salonId verificado (final): "${salonId}"`)
+    console.log(`📧 Email cliente: ${solicitud.email}`)
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`)
+
+    // 3.5. Imágenes - No se manejan aquí (el cliente las sube desde la app principal)
+    console.log(`\n📸 Imágenes: Se dejan vacías - el cliente las sube desde la app principal`)
 
     // 4. Crear o Actualizar cliente
     const emailBase = solicitud.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -401,13 +431,43 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
     }
 
     // 5. Crear estructura COMPLETA del salón en el proyecto principal
-
+    console.log(`\n🏗️  CREANDO SALÓN EN SISTEMA PRINCIPAL...`)
 
     const resultadoSalon = await crearSalonCompleto(solicitud, salonId)
 
 
 
+    // 5.5. Registrar salonId en la colección salonesId (IMPORTANTE: hacer esto DESPUÉS de crear el salón exitosamente)
+    console.log(`\n📝 Registrando salonId "${salonId}" en colección salonesId...`)
+    await db
+      .collection('landing-page')
+      .doc('data')
+      .collection('salonesId')
+      .doc(salonId)
+      .set({
+        salonId: salonId,
+        nombreSalon: solicitud.nombreSalon,
+        estado: 'activo',
+        fechaCreacion: admin.firestore.FieldValue.serverTimestamp(),
+        solicitudId: solicitudId,
+        clienteId: clienteId,
+        plan: solicitud.plan
+      })
 
+    console.log(`✅ salonId "${salonId}" registrado exitosamente`)
+
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`✅ SALÓN CREADO EXITOSAMENTE`)
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`🏪 Nombre: "${solicitud.nombreSalon}"`)
+    console.log(`🆔 salonId FINAL: "${salonId}"`)
+    console.log(`📧 Email admin: ${solicitud.email}`)
+    console.log(`📁 Carpeta en Cloudinary: "${salonId}"`)
+    console.log(`⚠️  IMPORTANTE: Las imágenes deben estar en carpetas como:`)
+    console.log(`   - ${salonId}/logos/`)
+    console.log(`   - ${salonId}/carrusel/`)
+    console.log(`   - ${salonId}/productos/`)
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`)
 
     // 6. Actualizar solicitud
     await db
@@ -428,6 +488,7 @@ export const crearSalonDesdeSolicitudCompleta = async (req, res) => {
       email: solicitud.email,
       nombreCompleto: solicitud.nombrePropietario,
       nombreSalon: solicitud.nombreSalon,
+      salonId: salonId,
       usuario: solicitud.email,
       passwordTemporal: resultadoSalon.adminPassword,
       plan: solicitud.plan
