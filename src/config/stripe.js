@@ -8,15 +8,24 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-// Validar que la secret key esté configurada
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY no está definido en las variables de entorno')
-}
+// ⚠️ STRIPE DESACTIVADO - No se usará por ahora
+// Si no hay STRIPE_SECRET_KEY, exportar null en lugar de fallar
+let stripe = null
 
-// Inicializar Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-11-20.acacia'
-})
+if (process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_SECRET_KEY.includes('placeholder')) {
+  // Solo inicializar Stripe si hay una clave REAL configurada
+  try {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-11-20.acacia'
+    })
+    console.log('✅ Stripe inicializado correctamente')
+  } catch (error) {
+    console.warn('⚠️ Error al inicializar Stripe:', error.message)
+    stripe = null
+  }
+} else {
+  console.warn('⚠️ Stripe NO configurado (STRIPE_SECRET_KEY no disponible o es placeholder)')
+}
 
 /**
  * Mapeo de planes a Price IDs de Stripe
@@ -70,6 +79,10 @@ export const createCheckoutSession = async ({
   successUrl,
   cancelUrl
 }) => {
+  if (!stripe) {
+    throw new Error('Stripe no está configurado. No se pueden procesar pagos.')
+  }
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
