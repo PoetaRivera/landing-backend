@@ -112,7 +112,7 @@ export const login = async (req, res) => {
     const cookieOptions = {
       httpOnly: true, // No accesible desde JavaScript
       secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
-      sameSite: 'strict', // Protección CSRF
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict', // none en producción para cross-domain
       maxAge: 24 * 60 * 60 * 1000 // 24 horas en ms
     }
 
@@ -152,7 +152,7 @@ export const logout = async (req, res) => {
     res.clearCookie('adminToken', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
     })
 
 
