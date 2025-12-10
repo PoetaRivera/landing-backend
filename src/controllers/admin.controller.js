@@ -25,12 +25,20 @@ export const getClientes = async (req, res) => {
   try {
     const { estado, plan, limite = 50, offset = 0 } = req.query
 
+    console.log(`👥 Obteniendo clientes - Estado: ${estado || 'todos'}, Plan: ${plan || 'todos'}`)
+
     const db = getFirestore()
     let query = db
       .collection('landing-page')
       .doc('data')
       .collection('clientes')
-      .orderBy('fechaCreacion', 'desc')
+
+    // ⚠️ IMPORTANTE: Solo usar orderBy si NO hay filtros
+    const tieneFiltros = estado || plan
+
+    if (!tieneFiltros) {
+      query = query.orderBy('fechaCreacion', 'desc')
+    }
 
     // Aplicar filtros
     if (estado) {
@@ -40,15 +48,9 @@ export const getClientes = async (req, res) => {
       query = query.where('planSeleccionado', '==', plan)
     }
 
-    // Aplicar límite
-    query = query.limit(parseInt(limite))
-
-    // Aplicar offset si existe
-    if (parseInt(offset) > 0) {
-      query = query.offset(parseInt(offset))
-    }
-
     const snapshot = await query.get()
+
+    console.log(`✅ Se encontraron ${snapshot.size} clientes`)
 
     const clientes = []
     snapshot.forEach(doc => {
@@ -66,17 +68,33 @@ export const getClientes = async (req, res) => {
         salonId: data.salonId,
         onboardingId: data.onboardingId,
         fechaCreacion: data.fechaCreacion?.toDate().toISOString(),
-        fechaUltimoAcceso: data.fechaUltimoAcceso?.toDate().toISOString()
+        fechaUltimoAcceso: data.fechaUltimoAcceso?.toDate().toISOString(),
+        _timestamp: data.fechaCreacion?.toDate().getTime() || 0
       })
     })
 
+    // Si hay filtros, ordenar en memoria
+    if (tieneFiltros) {
+      clientes.sort((a, b) => b._timestamp - a._timestamp)
+    }
+
+    // Limpiar campo auxiliar
+    clientes.forEach(c => delete c._timestamp)
+
+    // Aplicar límite y offset manualmente
+    const limiteNum = parseInt(limite)
+    const offsetNum = parseInt(offset)
+    const clientesPaginados = clientes.slice(offsetNum, offsetNum + limiteNum)
+
     res.status(200).json({
       success: true,
-      total: clientes.length,
-      clientes
+      total: clientesPaginados.length,
+      totalSinPaginar: clientes.length,
+      clientes: clientesPaginados
     })
   } catch (error) {
     console.error('❌ Error al obtener clientes:', error)
+    console.error('Stack:', error.stack)
     res.status(500).json({
       success: false,
       error: 'Error al obtener clientes',
@@ -317,14 +335,21 @@ export const getSolicitudesAdmin = async (req, res) => {
   try {
     const { estado, plan, limite = 50, offset = 0 } = req.query
 
-
+    console.log(`📋 Obteniendo solicitudes - Estado: ${estado || 'todos'}, Plan: ${plan || 'todos'}`)
 
     const db = getFirestore()
     let query = db
       .collection('landing-page')
       .doc('data')
       .collection('solicitudes')
-      .orderBy('fechaCreacion', 'desc')
+
+    // ⚠️ IMPORTANTE: Solo usar orderBy si NO hay filtros
+    // Firestore requiere índice compuesto para where + orderBy en campos diferentes
+    const tieneFiltros = estado || plan
+
+    if (!tieneFiltros) {
+      query = query.orderBy('fechaCreacion', 'desc')
+    }
 
     // Aplicar filtros
     if (estado) {
@@ -334,18 +359,11 @@ export const getSolicitudesAdmin = async (req, res) => {
       query = query.where('plan', '==', plan)
     }
 
-    // Aplicar límite
-    query = query.limit(parseInt(limite))
-
-    // Aplicar offset si existe
-    if (parseInt(offset) > 0) {
-      query = query.offset(parseInt(offset))
-    }
-
     const snapshot = await query.get()
 
+    console.log(`✅ Se encontraron ${snapshot.size} solicitudes`)
 
-
+    // Convertir a array y ordenar en memoria si hay filtros
     const solicitudes = []
     snapshot.forEach(doc => {
       const data = doc.data()
@@ -364,17 +382,33 @@ export const getSolicitudesAdmin = async (req, res) => {
         fechaSolicitud: data.fechaCreacion?.toDate().toISOString(),
         fechaCreacion: data.fechaCreacion?.toDate().toISOString(),
         fechaPago: data.fechaPago?.toDate().toISOString(),
-        fechaActualizacion: data.fechaActualizacion?.toDate().toISOString()
+        fechaActualizacion: data.fechaActualizacion?.toDate().toISOString(),
+        _timestamp: data.fechaCreacion?.toDate().getTime() || 0 // Para ordenar
       })
     })
 
+    // Si hay filtros, ordenar en memoria
+    if (tieneFiltros) {
+      solicitudes.sort((a, b) => b._timestamp - a._timestamp)
+    }
+
+    // Limpiar campo auxiliar
+    solicitudes.forEach(s => delete s._timestamp)
+
+    // Aplicar límite y offset manualmente
+    const limiteNum = parseInt(limite)
+    const offsetNum = parseInt(offset)
+    const solicitudesPaginadas = solicitudes.slice(offsetNum, offsetNum + limiteNum)
+
     res.status(200).json({
       success: true,
-      total: solicitudes.length,
-      solicitudes
+      total: solicitudesPaginadas.length,
+      totalSinPaginar: solicitudes.length,
+      solicitudes: solicitudesPaginadas
     })
   } catch (error) {
     console.error('❌ Error al obtener solicitudes:', error)
+    console.error('Stack:', error.stack)
     res.status(500).json({
       success: false,
       error: 'Error al obtener solicitudes',
