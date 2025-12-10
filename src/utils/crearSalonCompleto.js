@@ -77,6 +77,7 @@ export async function crearSalonCompleto(solicitud, salonId) {
     const metadata = {
       nombreComercial: solicitud.nombreEmpresa || solicitud.nombreSalon,
       estado: 'activo',
+      plan: solicitud.plan || solicitud.planSeleccionado || 'basico', // ✅ AGREGADO: Plan del cliente
       fechaCreacion: new Date().toISOString(),
       ultimaActualizacion: new Date().toISOString(),
 
